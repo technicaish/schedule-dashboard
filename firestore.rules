@@ -1,0 +1,71 @@
+// 허용 목록 변경은 Firebase 관리 화면에서만 합니다. 앱은 자기 등록 여부만 읽습니다.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function googleUser() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function allowed() {
+      return googleUser()
+        && get(/databases/$(database)/documents/members/$(request.auth.token.email.lower())).data.enabled == true;
+    }
+    function actor(value) {
+      return value is map && value.keys().hasOnly(['id', 'name', 'email'])
+        && value.id == request.auth.uid && value.email == request.auth.token.email
+        && value.name is string && value.name.size() > 0 && value.name.size() <= 200;
+    }
+    function content(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 120
+        && (data.dueDate == null || (data.dueDate is string
+          && data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')))
+        && data.important is bool && data.completed is bool
+        && data.revision is int && data.revision > 0
+        && data.updatedAt == request.time && actor(data.updatedBy);
+    }
+    // 백업 원본의 작성 정보는 사용자 파일의 기록이며, 복구 실행자는 별도로 검증합니다.
+    function oldPerson(value) {
+      return value is map && value.id is string && value.name is string && value.email is string;
+    }
+    function oldTime(value) { return value == null || value is timestamp; }
+    function restored(data) {
+      return data.restoredAt == request.time && actor(data.restoredBy)
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+        && (data.dueDate == null || (data.dueDate is string
+          && data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')))
+        && data.important is bool && data.completed is bool
+        && data.revision is int && data.revision >= 0 && data.schemaVersion == 1
+        && oldTime(data.createdAt) && oldTime(data.updatedAt) && oldTime(data.completedAt)
+        && (data.completed || data.completedAt == null)
+        && oldPerson(data.createdBy) && oldPerson(data.updatedBy);
+    }
+    // 계정 목록은 공개하지 않습니다. 미등록 사용자도 자기 등록 여부만 확인할 수 있습니다.
+    match /members/{email} {
+      allow get: if googleUser() && email == request.auth.token.email.lower();
+      allow list, write: if false;
+    }
+    match /tasks/{taskId} {
+      allow read: if allowed();
+      allow create: if allowed() && content(request.resource.data)
+        && request.resource.data.keys().hasOnly(['title', 'dueDate', 'important', 'completed',
+          'completedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'schemaVersion', 'revision'])
+        && request.resource.data.schemaVersion == 1 && request.resource.data.revision == 1
+        && request.resource.data.createdAt == request.time && actor(request.resource.data.createdBy)
+        && request.resource.data.completedAt == (request.resource.data.completed ? request.time : null);
+      allow create: if allowed() && restored(request.resource.data);
+      // 작성자·작성 시각 및 나중에 추가한 필드는 그대로 보존합니다.
+      allow update: if allowed() && content(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'dueDate', 'important', 'completed', 'completedAt', 'updatedAt', 'updatedBy', 'revision'])
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1
+        && request.resource.data.completedAt == (request.resource.data.completed
+          ? (resource.data.get('completed', false) && resource.data.get('completedAt', null) != null
+              ? resource.data.completedAt : request.time) : null);
+      allow delete: if allowed();
+    }
+    // 위에 명시하지 않은 위치(진단·하위 문서 포함)는 모두 차단합니다.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

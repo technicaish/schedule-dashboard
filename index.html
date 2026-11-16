@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- v1: 허용된 계정의 공동 일정과 JSON 백업 화면입니다. -->
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="둘이 함께 챙기는 일정과 할 일, 우리의 하루">
+  <title>우리의 하루 · 일정 대시보드</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <!-- 순서대로 읽는 일반 자바스크립트입니다. 별도의 설치나 빌드가 없습니다. -->
+  <script defer src="config.js?v=6"></script>
+  <script defer src="model.js?v=6"></script>
+  <script defer src="storage.js?v=6"></script>
+  <script defer src="view.js?v=6"></script>
+  <script defer src="calendar.js?v=6"></script>
+  <script defer src="app.js?v=6"></script>
+  <script defer src="backup-model.js?v=6"></script>
+  <script defer src="backup.js?v=6"></script>
+</head>
+<body>
+  <a class="skip-link" href="#task-title">할 일 입력으로 건너뛰기</a>
+  <div class="shell">
+    <header class="page-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <div><h1>우리의 하루<span class="brand-dot">.</span></h1><p>함께 챙기고, 가볍게 하루를.</p></div>
+      </div>
+      <div class="header-tools">
+        <div class="clock"><strong id="clock-date"></strong><span id="clock-time"></span></div>
+        <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 화면으로 전환" title="어두운 화면으로 전환"><span data-icon="moon"></span></button>
+        <button id="settings-open" class="icon-button" type="button" aria-label="화면 설정" title="화면 설정"><span data-icon="settings"></span></button>
+      </div>
+    </header>
+    <div class="demo-notice"><span class="demo-badge">v1 · 공동 일정</span><p>로그인과 접근 권한을 설정하기 전까지 일정은 비워두고 입력을 잠급니다.</p><span class="connection" id="connection-status"><i></i>인터넷 연결 확인 중</span></div>
+    <div id="offline-banner" class="notice warning" role="status" hidden>인터넷 연결이 끊겼어요. 기존 목록은 볼 수 있고, 다시 연결되면 수정할 수 있어요.</div>
+    <div id="storage-warning" class="notice warning" role="alert" hidden></div>
+
+    <main>
+      <!-- 로그인한 계정은 문자로만 표시하고, 일정 권한과 구분합니다. -->
+      <section class="connection-panel surface" aria-labelledby="auth-heading">
+        <div class="connection-copy"><h2 id="auth-heading">로그인을 준비하고 있어요</h2><p id="auth-account"></p><p>등록할 사이트 도메인: <strong id="auth-domain-hint"></strong></p><p id="auth-error" role="alert" hidden></p><p>허용 목록에 등록된 계정만 공동 일정을 읽고 수정할 수 있습니다.</p></div>
+        <div class="connection-actions"><button id="sign-in" class="button primary" type="button" disabled>Google 계정으로 로그인</button><button id="sign-out" class="button subtle" type="button" hidden>로그아웃</button><button id="auth-retry" class="button subtle" type="button" hidden>로그인 준비 다시 시도</button><a class="button subtle" href="SETUP_LOGIN.html" target="_blank" rel="noopener">로그인 설정 안내</a></div>
+      </section>
+      <!-- 관리자용 연결 점검 안내입니다. 정상 로그인 기능이 붙으면 상태 표시로 간소화합니다. -->
+      <section id="connection-panel" class="connection-panel surface" aria-labelledby="setup-state" aria-live="polite">
+        <div class="connection-copy"><h2 id="setup-state">연결정보 입력이 필요해요</h2><p id="setup-detail">설정 안내를 열어 Firebase 프로젝트를 만들어주세요.</p><p class="connection-project">프로젝트 ID: <strong id="setup-project">아직 입력하지 않음</strong></p></div>
+        <div class="connection-actions"><button id="check-connection" class="button primary" type="button">다시 연결</button><a class="button subtle" href="SETUP_ACCESS.html" target="_blank" rel="noopener">허용 목록 설정</a></div>
+      </section>
+      <!-- 입력 영역: 날짜 빠른 선택과 달력 선택을 함께 제공합니다. -->
+      <section class="composer surface" aria-labelledby="composer-heading">
+        <div class="composer-label"><span class="tiny-icon" data-icon="plus"></span><h2 id="composer-heading">새로운 할 일</h2><span>작은 일도 함께 기억해요</span></div>
+        <form id="add-form">
+          <fieldset id="add-fields" class="composer-fields" disabled>
+            <div class="title-field"><label class="sr-only" for="task-title">할 일 제목</label><input id="task-title" name="title" maxlength="120" required autocomplete="off" placeholder="무엇을 함께 챙길까요?"></div>
+            <div class="due-field"><label class="sr-only" for="task-due">마감일</label><input id="task-due" name="dueDate" type="date" aria-label="마감일"><div class="date-shortcuts" aria-label="마감일 빠른 선택"><button type="button" data-due="today">오늘</button><button type="button" data-due="tomorrow">내일</button><button type="button" data-due="none">날짜 없음</button></div></div>
+            <label class="important-choice"><input id="task-important" name="important" type="checkbox"><span data-icon="star"></span><span>중요</span></label>
+            <button type="submit" class="button primary"><span data-icon="plus"></span>추가</button>
+          </fieldset>
+        </form>
+      </section>
+
+      <section class="priority-section" aria-labelledby="priority-heading">
+        <div class="section-heading"><div><h2 id="priority-heading">먼저 챙길 일 <span id="priority-count" class="count">0</span></h2><p>중요한 일과 2주 안에 마감인 일을 모았어요.</p></div><span id="overdue-summary" class="summary-badge" hidden></span></div>
+        <div id="priority-list" class="task-grid"></div>
+        <div class="folded-lists">
+          <details id="other-details"><summary><span>나머지 할 일 <b id="other-count">0</b></span><span class="fold-hint">여유를 두고 챙겨요</span></summary><div id="other-list" class="task-grid folded-content"></div></details>
+          <details id="completed-details"><summary><span>완료한 일 <b id="completed-count">0</b></span><span class="fold-hint">함께 해낸 일들</span></summary><div id="completed-list" class="task-grid folded-content"></div></details>
+        </div>
+      </section>
+
+      <!-- 넓은 화면에서는 세 달을 나란히, 폰에서는 세로로 표시합니다. -->
+      <section class="calendar-section" aria-labelledby="calendar-heading">
+        <div class="section-heading calendar-heading"><div><h2 id="calendar-heading">다가오는 날들</h2><p>날짜를 누르면 그날의 일정을 볼 수 있어요.</p></div><div class="calendar-tools"><button id="calendar-prev" class="icon-button" type="button" aria-label="이전 달부터 보기"><span data-icon="left"></span></button><button id="calendar-today" class="button subtle" type="button">이번 달</button><button id="calendar-next" class="icon-button" type="button" aria-label="다음 달부터 보기"><span data-icon="right"></span></button></div></div>
+        <div id="calendars" class="calendars"></div>
+        <div class="calendar-legend"><span><i class="legend-dot today-dot"></i>오늘</span><span><i class="legend-dot important-dot"></i>중요한 일</span><span>완료한 일은 날짜를 눌러 확인</span></div>
+      </section>
+    </main>
+    <footer class="page-footer"><span>둘이 함께, 하나씩.</span><span id="save-status" role="status">로그인 연결 전 · 일정 저장 잠김</span></footer>
+  </div>
+
+  <!-- 날짜별 목록. 날짜를 누르는 순간 입력 칸의 마감일도 변경됩니다. -->
+  <dialog id="day-dialog" aria-labelledby="day-heading">
+    <div class="dialog-head"><div><p class="eyebrow">그날의 일정</p><h2 id="day-heading"></h2></div><button class="icon-button" type="button" data-close="day-dialog" aria-label="날짜 팝업 닫기"><span data-icon="close"></span></button></div>
+    <div id="day-list" class="day-list"></div>
+    <div class="dialog-actions"><button id="add-on-day" class="button primary" type="button"><span data-icon="plus"></span>이 날짜에 추가</button></div>
+  </dialog>
+
+  <dialog id="edit-dialog" aria-labelledby="edit-heading">
+    <div class="dialog-head"><h2 id="edit-heading">할 일 수정</h2><button class="icon-button" type="button" data-close="edit-dialog" aria-label="수정 창 닫기"><span data-icon="close"></span></button></div>
+    <form id="edit-form"><fieldset id="edit-fields" class="edit-fields" disabled>
+      <label for="edit-title">제목</label><input id="edit-title" maxlength="120" required autocomplete="off">
+      <label for="edit-due">마감일 <span class="muted">비워두면 날짜 없음</span></label><input id="edit-due" type="date">
+      <div class="edit-checks"><label><input id="edit-important" type="checkbox"> 중요한 일</label><label><input id="edit-completed" type="checkbox"> 완료한 일</label></div>
+      <p id="edit-meta" class="edit-meta"></p>
+      <div class="dialog-actions"><button id="delete-task" class="button danger" type="button">삭제</button><span class="spacer"></span><button class="button subtle" type="button" data-close="edit-dialog">취소</button><button class="button primary" type="submit">저장</button></div>
+    </fieldset></form>
+  </dialog>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-heading">
+    <div class="dialog-head"><h2 id="confirm-heading"></h2></div><p id="confirm-message" class="confirm-message"></p><div class="dialog-actions"><button id="confirm-no" class="button subtle" type="button">취소</button><button id="confirm-yes" class="button danger-solid" type="button">삭제</button></div>
+  </dialog>
+
+  <!-- 백업 파일은 서버에 올리지 않고 브라우저에서 검사합니다. -->
+  <dialog id="backup-dialog" aria-labelledby="backup-heading">
+    <div class="dialog-head"><h2 id="backup-heading">백업 가져오기</h2></div>
+    <p id="backup-summary"></p><p>같은 고유번호의 기존 항목은 수정하지 않습니다. 원본 작성 기록은 파일에서 복원하고, 가져온 사람은 별도로 기록합니다.</p>
+    <p id="backup-progress" role="status"></p>
+    <div class="dialog-actions"><button id="backup-cancel" class="button subtle" type="button">취소</button><button id="backup-confirm" class="button primary" type="button">없는 항목 추가</button></div>
+  </dialog>
+  <dialog id="settings-dialog" aria-labelledby="settings-heading">
+    <div class="dialog-head"><h2 id="settings-heading">화면 설정</h2><button class="icon-button" type="button" data-close="settings-dialog" aria-label="설정 닫기"><span data-icon="close"></span></button></div>
+    <div class="settings-row"><span>계정</span><span id="settings-account">로그인 확인 중</span></div><p class="help-text">사용자 등록·해제는 Firebase 관리 화면에서 합니다.</p>
+    <div class="settings-row"><label for="large-text">글씨 조금 더 크게</label><input id="large-text" type="checkbox"></div>
+    <div class="settings-row"><span>자동 새로고침</span><span>매일 00 · 06 · 12 · 18시</span></div><p class="help-text">한국시간 기준이며, 입력 중에는 잠시 미뤄요.</p>
+    <div class="settings-row"><span>일정 백업</span><button id="backup-export" type="button" class="button subtle" disabled>JSON 내보내기</button></div>
+    <div class="settings-row"><span>백업 복구</span><button id="backup-import" type="button" class="button subtle" disabled>JSON 가져오기</button></div>
+    <input id="backup-file" type="file" accept=".json,application/json" hidden>
+    <p id="backup-status" class="help-text" role="status">온라인으로 공동 일정에 연결하면 사용할 수 있어요.</p>
+    <p class="help-text"><a href="START_HERE.html" target="_blank" rel="noopener">사용 설명서 · 새 저장소 만들기</a></p>
+    <p class="help-text">백업 파일에는 실제 일정과 작성자 정보가 들어갑니다. GitHub 공개 저장소에는 올리지 마세요. <a href="SETUP_BACKUP.html" target="_blank" rel="noopener">백업 사용 안내</a></p>
+    <div class="settings-row"><span>저장소 설정</span><a class="button subtle" href="SETUP_ACCESS.html" target="_blank" rel="noopener">허용 목록 설정</a></div><p class="help-text">1단계의 가짜데이터는 실제 저장소로 옮기지 않습니다.</p>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="notice warning">화면을 사용하려면 브라우저의 자바스크립트를 켜주세요.</p></noscript>
+</body>
+</html>
