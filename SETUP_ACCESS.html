@@ -51,8 +51,15 @@ service cloud.firestore {
         &amp;&amp; value.id == request.auth.uid &amp;&amp; value.email == request.auth.token.email
         &amp;&amp; value.name is string &amp;&amp; value.name.size() &gt; 0 &amp;&amp; value.name.size() &lt;= 200;
     }
+    // 시작일 없는 기존 문서는 종료일 하루 일정으로 계속 허용합니다.
+    function dates(data) {
+      let start = data.get(&#x27;startDate&#x27;, data.dueDate);
+      return (start == null &amp;&amp; data.dueDate == null) ||
+        (start is string &amp;&amp; data.dueDate is string &amp;&amp; start &lt;= data.dueDate
+        &amp;&amp; start.matches(&#x27;^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;));
+    }
     function content(data) {
-      return data.title is string &amp;&amp; data.title.size() &gt; 0 &amp;&amp; data.title.size() &lt;= 120
+      return dates(data) &amp;&amp; data.title is string &amp;&amp; data.title.size() &gt; 0 &amp;&amp; data.title.size() &lt;= 120
         &amp;&amp; (data.dueDate == null || (data.dueDate is string
           &amp;&amp; data.dueDate.matches(&#x27;^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;)))
         &amp;&amp; data.important is bool &amp;&amp; data.completed is bool
@@ -65,7 +72,7 @@ service cloud.firestore {
     }
     function oldTime(value) { return value == null || value is timestamp; }
     function restored(data) {
-      return data.restoredAt == request.time &amp;&amp; actor(data.restoredBy)
+      return dates(data) &amp;&amp; data.restoredAt == request.time &amp;&amp; actor(data.restoredBy)
         &amp;&amp; data.title is string &amp;&amp; data.title.size() &gt; 0 &amp;&amp; data.title.size() &lt;= 120
         &amp;&amp; (data.dueDate == null || (data.dueDate is string
           &amp;&amp; data.dueDate.matches(&#x27;^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;)))
@@ -80,10 +87,12 @@ service cloud.firestore {
       allow get: if googleUser() &amp;&amp; email == request.auth.token.email.lower();
       allow list, write: if false;
     }
+    // 색상 설정은 허용된 사람만 읽으며 Firebase 관리 화면에서만 수정합니다.
+    match /settings/appearance { allow get: if allowed(); allow list, write: if false; }
     match /tasks/{taskId} {
       allow read: if allowed();
       allow create: if allowed() &amp;&amp; content(request.resource.data)
-        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;,
+        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;,
           &#x27;completedAt&#x27;, &#x27;createdAt&#x27;, &#x27;createdBy&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;schemaVersion&#x27;, &#x27;revision&#x27;])
         &amp;&amp; request.resource.data.schemaVersion == 1 &amp;&amp; request.resource.data.revision == 1
         &amp;&amp; request.resource.data.createdAt == request.time &amp;&amp; actor(request.resource.data.createdBy)
@@ -92,7 +101,7 @@ service cloud.firestore {
       // 작성자·작성 시각 및 나중에 추가한 필드는 그대로 보존합니다.
       allow update: if allowed() &amp;&amp; content(request.resource.data)
         &amp;&amp; request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          &#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;, &#x27;completedAt&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;revision&#x27;])
+          &#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;, &#x27;completedAt&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;revision&#x27;])
         &amp;&amp; request.resource.data.revision == resource.data.get(&#x27;revision&#x27;, 0) + 1
         &amp;&amp; request.resource.data.completedAt == (request.resource.data.completed
           ? (resource.data.get(&#x27;completed&#x27;, false) &amp;&amp; resource.data.get(&#x27;completedAt&#x27;, null) != null

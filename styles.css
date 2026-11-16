@@ -208,7 +208,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 17px; height: 17px;
   .brand-mark { width: 38px; height: 38px; }
   .demo-notice { margin-bottom: 12px; }
   .composer { padding: 12px 14px; }
-  .composer-label { display: none; }
+  .composer-label { display: flex; }
   .composer-fields { align-items: center; }
   .due-field { display: flex; align-items: center; gap: 7px; width: auto; }
   .due-field input { width: 160px; }
@@ -218,7 +218,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 17px; height: 17px;
   .section-heading { margin-bottom: 10px; }
   #priority-list { max-height: 143px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
   .task-card { padding-top: 10px; padding-bottom: 10px; }
-  .folded-lists { flex-direction: row; gap: 22px; margin-top: 5px; }
+  .folded-lists { flex-direction: column; gap: 0; margin-top: 5px; }
   .folded-lists details { flex: 1; min-width: 0; }
   .folded-content { grid-template-columns: 1fr; max-height: 143px; overflow-y: auto; }
   summary { padding: 8px 3px; }
@@ -284,3 +284,17 @@ input[type="checkbox"] { accent-color: var(--accent); width: 17px; height: 17px;
 #auth-account, #settings-account { overflow-wrap: anywhere; }
 #auth-error { color: var(--danger); }
 .connection-actions { flex-wrap: wrap; }
+
+/* 작성자 색과 중요 색은 밝기별 변수로 관리합니다. 중요 표시가 항상 우선합니다. */
+:root { --tone-red: #b62336; --tone-red-bg: #fff0f1; --tone-sky: #176489; --tone-sky-bg: #e4f5ff; --tone-pink: #99356b; --tone-pink-bg: #ffeaf4; }
+html[data-theme="dark"] { --tone-red: #ffacb5; --tone-red-bg: #48232d; --tone-sky: #8fd8ff; --tone-sky-bg: #193c50; --tone-pink: #ffafd8; --tone-pink-bg: #47273e; }
+[data-tone="red"] { --item-color: var(--tone-red); --item-bg: var(--tone-red-bg); }
+[data-tone="sky"] { --item-color: var(--tone-sky); --item-bg: var(--tone-sky-bg); }
+[data-tone="pink"] { --item-color: var(--tone-pink); --item-bg: var(--tone-pink-bg); }
+.task-card[data-tone]:not([data-tone="default"]) { background: var(--item-bg); border-left: 4px solid var(--item-color); }
+.task-card[data-tone]:not([data-tone="default"]) .task-title, .task-card.important .star { color: var(--item-color); }
+.day-task[data-tone]:not([data-tone="default"]) { color: var(--item-color); background: var(--item-bg); }
+.important-dot { background: var(--tone-red); }
+.due-field > label { display:block; font-size: 12px; color: var(--muted); }
+.composer-fields { flex-wrap: wrap; }
+.priority-section { margin-top: 8px; }

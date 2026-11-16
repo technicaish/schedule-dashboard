@@ -5,13 +5,11 @@
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
   function render(root, start, items, reference, selected) {
     const active = new Map(), total = new Map();
-    for (const task of items) {
-      if (!task.dueDate) continue;
-      total.set(task.dueDate, (total.get(task.dueDate) || 0) + 1);
-      if (!task.completed) {
-        if (!active.has(task.dueDate)) active.set(task.dueDate, []);
-        active.get(task.dueDate).push(task);
-      }
+    // 표시할 3개월만 순회하여 긴 기간 일정도 날짜 수만큼 무한히 늘리지 않습니다.
+    const end = M.monthStart(start, 3);
+    for (let date = start; date < end; date = M.addDays(date, 1)) {
+      const dayItems = items.filter(task => M.onDate(task, date));
+      total.set(date, dayItems.length); active.set(date, dayItems.filter(task => !task.completed));
     }
     const fragment = document.createDocumentFragment();
     for (let offset = 0; offset < 3; offset++) {
@@ -45,8 +43,8 @@
         }
         cell.append(V.el("span", "day-number", String(Number(date.slice(-2)))));
         if (!outside && tasks.length) {
-          const important = tasks.some(task => task.important);
-          cell.append(V.el("span", `day-task${important ? " is-important" : ""}`, tasks[0].title));
+          const firstTask = tasks.find(task => task.important) || tasks[0];
+          const label = V.el("span", "day-task", firstTask.title); label.dataset.tone = V.tone(firstTask); cell.append(label);
           if (tasks.length > 1) cell.append(V.el("span", "day-more", `외 ${tasks.length - 1}개`));
         }
         grid.append(cell);

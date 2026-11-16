@@ -7,7 +7,7 @@
   let sdkPromise, sdk, db, user = null, stopWatching = null, items = [], memberStop = null, generation = 0, taskGeneration = 0, permitted = false, serverSeen = false;
   let status = { code: "setup-required", title: "저장소 설정을 기다리고 있어요", detail: "안내에 따라 연결정보를 입력해주세요.", busy: false };
   const authListeners = new Set();
-  let auth, authJob, authStop;
+  let auth, authJob, authStop, appearanceStop, appearance = {};
   let authState = { ready: false, busy: false, error: "", title: "로그인을 준비하고 있어요" };
 
   // 앱은 화면 설정만 보관합니다. 로그인 유지 정보는 Firebase Authentication이 관리합니다.
@@ -170,6 +170,7 @@
   }
   function stopTasks() {
     taskGeneration++;
+    if (appearanceStop) appearanceStop(); appearanceStop = null; appearance = {};
     if (stopWatching) stopWatching(); stopWatching = null;
     serverSeen = false; items = []; emit();
   }
@@ -193,6 +194,12 @@
       if (!permitted) {
         stopTasks(); setStatus("not-allowed", "허용 목록에 없는 계정이에요", "Firebase의 members에서 이 이메일의 enabled 값을 true로 설정해주세요."); return;
       }
+      const colorTurn = taskGeneration;
+      if (!appearanceStop) appearanceStop = F.onSnapshot(F.doc(db, "settings", "appearance"), value => {
+        if (turn !== generation || colorTurn !== taskGeneration || !permitted) return;
+        const data = value.exists() ? value.data() : {};
+        appearance = Object.fromEntries(["skyEmail", "pinkEmail"].map(key => [key, typeof data[key] === "string" ? data[key].trim().toLowerCase() : ""])); emit();
+      }, () => { if (turn === generation && colorTurn === taskGeneration) { appearance = {}; emit(); } });
       if (stopWatching) return;
       const taskTurn = taskGeneration;
       stopWatching = F.onSnapshot(F.collection(db, "tasks"), { includeMetadataChanges: true }, snapshot => {
@@ -268,7 +275,7 @@
       transaction.set(ref, data); return true;
     });
   }
-  D.storage = { exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
+  D.storage = { getAppearance: () => ({ ...appearance }), exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
     watchAuth, signIn, signOut, prepareAuth, canRead: () => Boolean(user && permitted && serverSeen), authBusy: () => authState.busy,
     getStatus: () => ({ ...status }), getPreferences: () => ({ ...preferences }), setPreferences };
 })();

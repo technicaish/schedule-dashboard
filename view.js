@@ -26,9 +26,16 @@
   function fillIcons(root = document) {
     root.querySelectorAll("[data-icon]").forEach(node => node.replaceChildren(icon(node.dataset.icon)));
   }
+  // 작성자 색상은 허용된 서버 설정으로 정하고 실제 이메일은 코드에 넣지 않습니다.
+  function tone(task) {
+    if (task.important) return "red";
+    const colors = D.storage.getAppearance(), email = (task.createdBy.email || "").toLowerCase();
+    return email && email === colors.skyEmail ? "sky" : email && email === colors.pinkEmail ? "pink" : "default";
+  }
   function taskCard(task, reference, online) {
     const due = M.dueInfo(task, reference);
     const card = el("article", `task-card${task.completed ? " completed" : ""}${task.important ? " important" : ""}${due.type === "late" ? " overdue" : ""}`);
+    card.dataset.tone = tone(task);
     const check = el("button", "task-check");
     check.type = "button"; check.dataset.action = "toggle"; check.dataset.id = task.id;
     check.setAttribute("role", "checkbox"); check.setAttribute("aria-checked", String(task.completed));
@@ -42,7 +49,7 @@
     if (task.important) { const star = el("span", "star"); star.title = "중요한 일"; star.append(icon("star")); title.append(star); }
     title.append(el("span", "title-text", task.title));
     const meta = el("div", "task-meta");
-    meta.append(el("span", "", M.dateLabel(task.dueDate)), el("span", "", `작성 ${task.createdBy.name} · 수정 ${task.updatedBy.name}`));
+    meta.append(el("span", "", M.rangeLabel(task)), el("span", "", `작성 ${task.createdBy.name} · 수정 ${task.updatedBy.name}`));
     content.append(title, meta);
     const side = el("div", "task-side");
     side.append(el("span", `due-badge ${due.type}`, due.text));
@@ -72,7 +79,7 @@
     document.getElementById("day-heading").textContent = M.dateLabel(date, true);
     const root = document.getElementById("day-list");
     if (locked) { root.replaceChildren(el("p", "empty-state", "로그인과 접근 권한 설정 후 그날 일정을 확인할 수 있어요.")); return; }
-    const all = items.filter(task => task.dueDate === date).sort(M.sortTasks);
+    const all = items.filter(task => M.onDate(task, date)).sort(M.sortTasks);
     const open = all.filter(task => !task.completed), done = all.filter(task => task.completed);
     taskList(root, open, reference, online, done.length ? "미완료 일정이 없어요." : "아직 일정이 없는 날이에요.");
     if (done.length) {
@@ -90,5 +97,5 @@
     if (dialog) { const feedback = el("p", "notice warning dialog-feedback", message); feedback.setAttribute("role", "status"); dialog.append(feedback); }
     toastTimer = setTimeout(() => { node.hidden = true; document.querySelectorAll(".dialog-feedback").forEach(old => old.remove()); }, 4500);
   }
-  D.view = { el, icon, fillIcons, taskCard, renderLists, renderDay, toast };
+  D.view = { tone, el, icon, fillIcons, taskCard, renderLists, renderDay, toast };
 })();

@@ -29,6 +29,7 @@
     if (typeof value.title !== "string" || !value.title.trim() || value.title.length > 120) throw new Error(`${index + 1}번째 제목을 확인해주세요.`);
     for (const field of ["important", "completed"]) if (value[field] !== undefined && typeof value[field] !== "boolean") throw new Error(`${field} 값은 true 또는 false여야 합니다.`);
     if (value.dueDate !== undefined && value.dueDate !== null && !M.validDate(value.dueDate)) throw new Error(`${index + 1}번째 마감일이 올바르지 않습니다.`);
+    if (value.startDate !== undefined && value.startDate !== null && !M.validDate(value.startDate)) throw new Error("시작일이 올바르지 않습니다.");
     if (value.revision !== undefined && (!Number.isSafeInteger(value.revision) || value.revision < 0)) throw new Error("변경 횟수가 올바르지 않습니다.");
     const result = { ...value, ...M.validate(value), id, schemaVersion: 1, revision: value.revision ?? 0,
       createdAt: time(value.createdAt, "작성"), updatedAt: time(value.updatedAt, "수정"), completedAt: time(value.completedAt, "완료"),

@@ -19,7 +19,7 @@
   setTheme(prefs.theme === "dark" ? "dark" : "light");
   document.documentElement.dataset.large = String(prefs.large === true);
   $("large-text").checked = prefs.large === true;
-  $("task-due").value = today;
+  $("task-due").value = today; $("task-start").value = today;
 
   function dateShortcuts() {
     const chosen = $("task-due").value;
@@ -44,7 +44,7 @@
     // 로그아웃·계정 변경·권한 해제 시 팝업과 작성 중인 내용도 지웁니다.
     if (!S.canRead()) {
       for (const id of ["edit-dialog", "confirm-dialog"]) if ($(id).open) $(id).close();
-      for (const id of ["task-title", "edit-title", "edit-due"]) $(id).value = "";
+      for (const id of ["task-title", "edit-title", "edit-due", "edit-start"]) $(id).value = "";
       $("edit-meta").textContent = ""; $("confirm-message").textContent = "";
       $("task-important").checked = false; editing = null;
     }
@@ -61,7 +61,7 @@
     }
   }
   function inputValues(prefix) {
-    return { title: $(`${prefix}-title`).value, dueDate: $(`${prefix}-due`).value || null, important: $(`${prefix}-important`).checked,
+    return { startDate: $(`${prefix}-start`).value || null, title: $(`${prefix}-title`).value, dueDate: $(`${prefix}-due`).value || null, important: $(`${prefix}-important`).checked,
       completed: prefix === "edit" ? $("edit-completed").checked : false };
   }
   async function change(action, success) {
@@ -87,19 +87,19 @@
     event.preventDefault();
     const input = inputValues("task");
     if (await change(() => S.add(input), "할 일을 추가했어요.")) {
-      $("add-form").reset(); $("task-due").value = selectedDay || today;
+      $("add-form").reset(); $("task-due").value = selectedDay || today; $("task-start").value = $("task-due").value;
       dateShortcuts(); $("task-title").focus();
     }
   });
   $("add-form").addEventListener("change", dateShortcuts);
   document.querySelectorAll("[data-due]").forEach(button => button.addEventListener("click", () => {
     $("task-due").value = button.dataset.due === "today" ? today : button.dataset.due === "tomorrow" ? M.addDays(today, 1) : "";
-    dateShortcuts();
+    $("task-start").value = $("task-due").value; dateShortcuts();
   }));
   function openEdit(task) {
     if ($("day-dialog").open) $("day-dialog").close();
     editing = { id: task.id, revision: task.revision };
-    $("edit-title").value = task.title; $("edit-due").value = task.dueDate || "";
+    $("edit-start").value = task.startDate || task.dueDate || ""; $("edit-title").value = task.title; $("edit-due").value = task.dueDate || "";
     $("edit-important").checked = task.important; $("edit-completed").checked = task.completed;
     $("edit-meta").textContent = `작성 ${task.createdBy.name} · ${M.stampLabel(task.createdAt)}\n마지막 수정 ${task.updatedBy.name} · ${M.stampLabel(task.updatedAt)}${task.completedAt ? `\n완료 ${M.stampLabel(task.completedAt)}` : ""}${task.restoredAt ? `\n백업에서 가져옴 ${task.restoredBy?.name || "알 수 없음"} · ${M.stampLabel(task.restoredAt)} (위 작성 기록은 원본 파일 기준)` : ""}`;
     connection(); $("edit-dialog").showModal();
@@ -131,7 +131,7 @@
   $("calendars").addEventListener("click", event => {
     const button = event.target.closest("button[data-date]");
     if (!button) return;
-    selectedDay = button.dataset.date; $("task-due").value = selectedDay; dateShortcuts();
+    selectedDay = button.dataset.date; $("task-due").value = selectedDay; $("task-start").value = selectedDay; dateShortcuts();
     V.renderDay(items, selectedDay, today, writable(), !S.canRead());
     D.calendar.render($("calendars"), startMonth, items, today, selectedDay);
     $("day-dialog").showModal();
@@ -162,7 +162,7 @@
     $("clock-time").textContent = `${p.hour}:${p.minute} · 한국시간`;
     if (nextDay !== today) {
       if (startMonth === M.monthStart(today)) startMonth = M.monthStart(nextDay);
-      if (!$("task-title").value.trim() && $("task-due").value === today) $("task-due").value = nextDay;
+      if (!$("task-title").value.trim() && $("task-due").value === today && $("task-start").value === today) { $("task-due").value = nextDay; $("task-start").value = nextDay; }
       today = nextDay; dateShortcuts(); paint();
     }
     const slot = M.reloadSlot(now);
