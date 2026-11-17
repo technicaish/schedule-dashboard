@@ -61,7 +61,7 @@
       title: typeof row.title === "string" && row.title.trim() ? row.title : "제목 없는 일",
       dueDate: validDate(row.dueDate) ? row.dueDate : null,
       startDate: validDate(row.dueDate) ? (validDate(row.startDate) && row.startDate <= row.dueDate ? row.startDate : row.dueDate) : null,
-      important: row.important === true, completed: row.completed === true,
+      checklist: row.checklist === true, important: row.important === true, completed: row.completed === true,
       deletedAt: typeof row.deletedAt === "string" ? row.deletedAt : null,
       completedAt: typeof row.completedAt === "string" ? row.completedAt : null,
       createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
@@ -70,21 +70,22 @@
     };
   }
   function validate(input) {
+    if (input.checklist !== undefined && typeof input.checklist !== "boolean") throw new Error("체크리스트 구분을 확인해주세요.");
     const title = String(input.title || "").trim();
     if (!title) throw new Error("할 일 제목을 입력해주세요.");
     if (title.length > C.titleMaxLength) throw new Error(`제목은 ${C.titleMaxLength}자까지 입력할 수 있어요.`);
     if (input.dueDate && !validDate(input.dueDate)) throw new Error("마감일을 올바른 날짜로 선택해주세요.");
     const dueDate = input.dueDate || null, startDate = input.startDate || dueDate;
     if (startDate && (!validDate(startDate) || !dueDate || startDate > dueDate)) throw new Error("종료일은 시작일과 같거나 뒤여야 합니다. 날짜 없음은 두 날짜를 모두 비워주세요.");
-    return { ...D.taskOptions.validate(input, startDate, dueDate), title, startDate, dueDate, important: input.important === true, completed: input.completed === true };
+    return { ...D.taskOptions.validate(input, startDate, dueDate), title, startDate, dueDate, checklist: input.checklist === true, important: input.important === true, completed: input.completed === true };
   }
   function dueInfo(task, reference = today()) {
     if (task.completed) return { text: "완료", type: "done" };
     const days = diffDays(task.dueDate, reference);
     if (days === null) return { text: "날짜 없음", type: "none" };
-    if (task.startDate && task.startDate !== task.dueDate && task.startDate > reference) return { text: `시작 D-${diffDays(task.startDate, reference)}`, type: "soon" };
+    if (!task.checklist && task.startDate && task.startDate !== task.dueDate && task.startDate > reference) return { text: `시작 D-${diffDays(task.startDate, reference)}`, type: "soon" };
     if (days < 0) return { text: `${-days}일 지남`, type: "late" };
-    if (task.startDate && task.startDate < reference && days > 0) return { text: `진행 중 · 종료 D-${days}`, type: "soon" };
+    if (!task.checklist && task.startDate && task.startDate < reference && days > 0) return { text: `진행 중 · 종료 D-${days}`, type: "soon" };
     if (days === 0) return { text: "오늘", type: "today" };
     return { text: `D-${days}`, type: days <= C.priorityDays ? "soon" : "later" };
   }
@@ -93,13 +94,14 @@
       (a.endTime || "23:59").localeCompare(b.endTime || "23:59") || Number(b.important) - Number(a.important) || (a.createdAt || "").localeCompare(b.createdAt || "") || a.id.localeCompare(b.id);
   }
   function groupTasks(items, reference = today()) {
-    const groups = { priority: [], other: [], completed: [] };
+    const groups = { priority: [], checklist: [], other: [], completed: [] };
     for (const task of items) {
       if (task.completed) groups.completed.push(task);
+      else if (task.checklist) groups.checklist.push(task);
       else if (task.important || (task.dueDate && diffDays(task.startDate || task.dueDate, reference) <= C.priorityDays)) groups.priority.push(task);
       else groups.other.push(task);
     }
-    groups.priority.sort(sortTasks); groups.other.sort(sortTasks);
+    groups.checklist.sort(sortTasks); groups.priority.sort(sortTasks); groups.other.sort(sortTasks);
     groups.completed.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || ""));
     return groups;
   }
@@ -119,7 +121,7 @@
     const slot = [...C.reloadHours].reverse().find(value => value <= hour);
     return `${today(date)}-${pad(slot === undefined ? 0 : slot)}`;
   }
-  function onDate(task, date) { return Boolean(task.dueDate && (task.startDate || task.dueDate) <= date && date <= task.dueDate); }
+  function onDate(task, date) { if (task.checklist) return task.dueDate === date; return Boolean(task.dueDate && (task.startDate || task.dueDate) <= date && date <= task.dueDate); }
   function rangeLabel(task) { return task.startDate && task.startDate !== task.dueDate ? `${dateLabel(task.startDate)} ~ ${dateLabel(task.dueDate)}` : dateLabel(task.dueDate); }
   D.model = { completionCutoff, recentCompleted, onDate, rangeLabel, parts, today, validDate, addDays, monthStart, diffDays, dateLabel, stampLabel, normalize, validate, dueInfo, sortTasks, groupTasks, reloadSlot };
 })();

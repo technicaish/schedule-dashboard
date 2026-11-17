@@ -3,7 +3,7 @@
 window.Dashboard = window.Dashboard || {};
 window.Dashboard.config = Object.freeze({
   timeZone: "Asia/Seoul", // 오늘과 마감일은 한국시간으로 판단합니다.
-  priorityDays: 7,
+  priorityDays: 3,
   reloadHours: [0, 6, 12, 18],
   titleMaxLength: 120,
   preferencesKey: "our-day-preferences-v1",

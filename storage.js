@@ -254,13 +254,13 @@
     requireWritable(); const actor = currentUser(), F = sdk.firestore, ref = F.doc(db, "tasks", id);
     return F.runTransaction(db, async transaction => {
       requireWritable(actor.id); const snap = await transaction.get(ref);
-      if (action === "purge" && !snap.exists()) return;
+      if (["purge", "erase"].includes(action) && !snap.exists()) return;
       const old = checkRevision(snap, revision); requireWritable(actor.id);
       if (action === "trash" && old.deletedAt) throw new Error("이미 휴지통에 있어요.");
       if (action !== "trash" && !old.deletedAt) throw new Error("이미 복원된 일정이에요.");
-      if (action === "purge") {
-        if (Date.now() - Date.parse(old.deletedAt) < 30 * 86400000) return;
-        transaction.delete(ref); // 최종 30일 경계는 보안 규칙이 서버 시각으로 검사합니다.
+      if (["purge", "erase"].includes(action)) {
+        if (action === "purge" && Date.now() - Date.parse(old.deletedAt) < 30 * 86400000) return;
+        transaction.delete(ref); // 자동 정리는 30일 후, 수동 영구 삭제는 확인 후 실행합니다.
       } else transaction.update(ref, { deletedAt: action === "trash" ? F.serverTimestamp() : null,
         deletedBy: action === "trash" ? actor : null, revision: old.revision + 1,
         updatedAt: F.serverTimestamp(), updatedBy: actor });
@@ -268,6 +268,7 @@
   }
   const remove = (id, revision) => trashAction(id, revision, "trash");
   const restoreTrash = (id, revision) => trashAction(id, revision, "restore");
+  const deleteTrash = (id, revision) => trashAction(id, revision, "erase");
   const purgeTrash = (id, revision) => trashAction(id, revision, "purge");
   // 백업은 화면 캐시 대신 서버의 전체 목록을 읽습니다. 회원 목록·로그인 정보는 제외합니다.
   async function exportTasks() {
@@ -289,7 +290,7 @@
       transaction.set(ref, data); return true;
     });
   }
-  D.storage = { restoreTrash, purgeTrash, getAppearance: () => ({ ...appearance }), exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
+  D.storage = { deleteTrash, restoreTrash, purgeTrash, getAppearance: () => ({ ...appearance }), exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
     watchAuth, signIn, signOut, prepareAuth, canRead: () => Boolean(user && permitted && serverSeen), authBusy: () => authState.busy,
     getStatus: () => ({ ...status }), getPreferences: () => ({ ...preferences }), setPreferences };
 })();

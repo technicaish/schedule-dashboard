@@ -3,6 +3,8 @@
   "use strict";
   const D = window.Dashboard, M = D.model;
   const paths = {
+    list: "M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1",
+    grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
     plus: "M12 5v14M5 12h14", close: "m6 6 12 12M18 6 6 18",
     left: "m14 5-7 7 7 7", right: "m10 5 7 7-7 7",
     check: "m5 12 4 4L19 6", moon: "M20.6 13A9 9 0 0 1 11 3.4 9 9 0 1 0 20.6 13Z",
@@ -65,10 +67,10 @@
     items = locked ? [] : items.filter(task => !task.deletedAt);
     const groups = M.groupTasks(items, reference);
     groups.completed = groups.completed.filter(task => M.recentCompleted(task, reference));
-    groups.priority = groups.priority.filter(task => D.taskOptions.visibleTo(task, D.storage.currentUser(), D.storage.getPreferences().filter));
-    const messages = { priority: "급하게 챙길 일이 없어요. 여유로운 하루 보내세요.", other: "나머지 할 일이 없어요.", completed: "최근 2개월 동안 완료한 일이 없어요." };
+    for (const name of ["priority", "checklist"]) groups[name] = groups[name].filter(task => D.taskOptions.visibleTo(task, D.storage.currentUser(), D.storage.getPreferences().filter));
+    const messages = { checklist: "등록할 때 체크리스트를 선택하면 여기에 모여요.", priority: "급하게 챙길 일이 없어요. 여유로운 하루 보내세요.", other: "나머지 할 일이 없어요.", completed: "최근 2개월 동안 완료한 일이 없어요." };
     if (locked) for (const key of Object.keys(messages)) messages[key] = "로그인과 접근 권한 설정을 마치면 일정을 볼 수 있어요.";
-    for (const key of ["priority", "other", "completed"]) {
+    for (const key of ["priority", "checklist", "other", "completed"]) {
       document.getElementById(`${key}-count`).textContent = groups[key].length;
       taskList(document.getElementById(`${key}-list`), groups[key], reference, online, messages[key]);
     }

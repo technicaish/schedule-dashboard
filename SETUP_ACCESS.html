@@ -65,7 +65,7 @@ service cloud.firestore {
       let start = data.get(&#x27;startDate&#x27;, data.dueDate);
       let first = data.get(&#x27;startTime&#x27;, null);
       let last = data.get(&#x27;endTime&#x27;, null);
-      return (assignee == null || (assignee is string &amp;&amp; assignee.size() &lt;= 254 &amp;&amp; assignee.matches(&#x27;^[^ @]+@[^ @]+[.][^ @]+$&#x27;)))
+      return data.get(&#x27;checklist&#x27;, false) is bool &amp;&amp; (assignee == null || (assignee is string &amp;&amp; assignee.size() &lt;= 254 &amp;&amp; assignee.matches(&#x27;^[^ @]+@[^ @]+[.][^ @]+$&#x27;)))
         &amp;&amp; (data.get(&#x27;scope&#x27;, &#x27;shared&#x27;) == &#x27;private&#x27; || assignee == null)
         &amp;&amp; allDay is bool &amp;&amp; data.get(&#x27;scope&#x27;, &#x27;shared&#x27;) in [&#x27;shared&#x27;, &#x27;private&#x27;]
         &amp;&amp; (allDay ? (first == null &amp;&amp; last == null) :
@@ -110,7 +110,7 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow read: if allowed();
       allow create: if allowed() &amp;&amp; content(request.resource.data)
-        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;allDay&#x27;, &#x27;startTime&#x27;, &#x27;endTime&#x27;, &#x27;scope&#x27;, &#x27;assigneeEmail&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;,
+        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;allDay&#x27;, &#x27;startTime&#x27;, &#x27;endTime&#x27;, &#x27;scope&#x27;, &#x27;assigneeEmail&#x27;, &#x27;checklist&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;,
           &#x27;completedAt&#x27;, &#x27;createdAt&#x27;, &#x27;createdBy&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;schemaVersion&#x27;, &#x27;revision&#x27;])
         &amp;&amp; request.resource.data.schemaVersion == 1 &amp;&amp; request.resource.data.revision == 1
         &amp;&amp; request.resource.data.createdAt == request.time &amp;&amp; actor(request.resource.data.createdBy)
@@ -120,7 +120,7 @@ service cloud.firestore {
       allow update: if allowed() &amp;&amp; resource.data.get(&#x27;deletedAt&#x27;, null) == null
         &amp;&amp; request.resource.data.get(&#x27;deletedAt&#x27;, null) == null &amp;&amp; content(request.resource.data)
         &amp;&amp; request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          &#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;allDay&#x27;, &#x27;startTime&#x27;, &#x27;endTime&#x27;, &#x27;scope&#x27;, &#x27;assigneeEmail&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;, &#x27;completedAt&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;revision&#x27;])
+          &#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;allDay&#x27;, &#x27;startTime&#x27;, &#x27;endTime&#x27;, &#x27;scope&#x27;, &#x27;assigneeEmail&#x27;, &#x27;checklist&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;, &#x27;completedAt&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;revision&#x27;])
         &amp;&amp; request.resource.data.revision == resource.data.get(&#x27;revision&#x27;, 0) + 1
         &amp;&amp; request.resource.data.completedAt == (request.resource.data.completed
           ? (resource.data.get(&#x27;completed&#x27;, false) &amp;&amp; resource.data.get(&#x27;completedAt&#x27;, null) != null
@@ -134,8 +134,8 @@ service cloud.firestore {
           || (resource.data.get(&#x27;deletedAt&#x27;, null) is timestamp
             &amp;&amp; request.time &lt; resource.data.deletedAt + duration.value(30, &#x27;d&#x27;)
             &amp;&amp; request.resource.data.deletedAt == null &amp;&amp; request.resource.data.deletedBy == null));
-      allow delete: if allowed() &amp;&amp; resource.data.get(&#x27;deletedAt&#x27;, null) is timestamp
-        &amp;&amp; request.time &gt;= resource.data.deletedAt + duration.value(30, &#x27;d&#x27;);
+      // 수동 영구 삭제를 허용하되 정상 일정의 직접 삭제는 금지합니다.
+      allow delete: if allowed() &amp;&amp; resource.data.get(&#x27;deletedAt&#x27;, null) is timestamp;
     }
     // 위에 명시하지 않은 위치(진단·하위 문서 포함)는 모두 차단합니다.
     match /{document=**} { allow read, write: if false; }

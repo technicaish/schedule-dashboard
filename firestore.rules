@@ -31,7 +31,7 @@ service cloud.firestore {
       let start = data.get('startDate', data.dueDate);
       let first = data.get('startTime', null);
       let last = data.get('endTime', null);
-      return (assignee == null || (assignee is string && assignee.size() <= 254 && assignee.matches('^[^ @]+@[^ @]+[.][^ @]+$')))
+      return data.get('checklist', false) is bool && (assignee == null || (assignee is string && assignee.size() <= 254 && assignee.matches('^[^ @]+@[^ @]+[.][^ @]+$')))
         && (data.get('scope', 'shared') == 'private' || assignee == null)
         && allDay is bool && data.get('scope', 'shared') in ['shared', 'private']
         && (allDay ? (first == null && last == null) :
@@ -76,7 +76,7 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow read: if allowed();
       allow create: if allowed() && content(request.resource.data)
-        && request.resource.data.keys().hasOnly(['title', 'dueDate', 'startDate', 'allDay', 'startTime', 'endTime', 'scope', 'assigneeEmail', 'important', 'completed',
+        && request.resource.data.keys().hasOnly(['title', 'dueDate', 'startDate', 'allDay', 'startTime', 'endTime', 'scope', 'assigneeEmail', 'checklist', 'important', 'completed',
           'completedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'schemaVersion', 'revision'])
         && request.resource.data.schemaVersion == 1 && request.resource.data.revision == 1
         && request.resource.data.createdAt == request.time && actor(request.resource.data.createdBy)
@@ -86,7 +86,7 @@ service cloud.firestore {
       allow update: if allowed() && resource.data.get('deletedAt', null) == null
         && request.resource.data.get('deletedAt', null) == null && content(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'dueDate', 'startDate', 'allDay', 'startTime', 'endTime', 'scope', 'assigneeEmail', 'important', 'completed', 'completedAt', 'updatedAt', 'updatedBy', 'revision'])
+          'title', 'dueDate', 'startDate', 'allDay', 'startTime', 'endTime', 'scope', 'assigneeEmail', 'checklist', 'important', 'completed', 'completedAt', 'updatedAt', 'updatedBy', 'revision'])
         && request.resource.data.revision == resource.data.get('revision', 0) + 1
         && request.resource.data.completedAt == (request.resource.data.completed
           ? (resource.data.get('completed', false) && resource.data.get('completedAt', null) != null
@@ -100,8 +100,8 @@ service cloud.firestore {
           || (resource.data.get('deletedAt', null) is timestamp
             && request.time < resource.data.deletedAt + duration.value(30, 'd')
             && request.resource.data.deletedAt == null && request.resource.data.deletedBy == null));
-      allow delete: if allowed() && resource.data.get('deletedAt', null) is timestamp
-        && request.time >= resource.data.deletedAt + duration.value(30, 'd');
+      // 수동 영구 삭제를 허용하되 정상 일정의 직접 삭제는 금지합니다.
+      allow delete: if allowed() && resource.data.get('deletedAt', null) is timestamp;
     }
     // 위에 명시하지 않은 위치(진단·하위 문서 포함)는 모두 차단합니다.
     match /{document=**} { allow read, write: if false; }

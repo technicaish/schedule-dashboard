@@ -7,7 +7,7 @@
   let composerDirty = false;
   let editing = null, busy = false, lastSlot = M.reloadSlot();
   const online = () => navigator.onLine;
-  const writable = () => online() && !busy && !D.backup?.busy && S.canWrite();
+  const writable = () => online() && !busy && !D.backup?.busy && !D.trash?.busy && S.canWrite();
   V.fillIcons();
 
   function setTheme(theme) {
@@ -86,7 +86,7 @@
     try {
       await action(); V.toast(success); return true;
     } catch (error) {
-      V.toast(error.code === "permission-denied" ? "저장 권한이 거절됐어요. Firebase에 v1.14 규칙을 게시했는지와 계정 허용 상태를 확인해주세요." : error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
+      V.toast(error.code === "permission-denied" ? "저장 권한이 거절됐어요. Firebase에 v1.16 규칙을 게시했는지와 계정 허용 상태를 확인해주세요." : error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
       return false;
     } finally { busy = false; paint(); }
   }
@@ -170,6 +170,7 @@
     setTheme(theme); S.setPreferences({ theme });
   });
   $("completed-info").addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); $("completed-help").showModal(); });
+  $("checklist-info").addEventListener("click", () => $("checklist-help").showModal());
   $("priority-info").addEventListener("click", () => $("priority-help").showModal());
   $("settings-open").addEventListener("click", () => $("settings-dialog").showModal());
   $("large-text").addEventListener("change", event => {

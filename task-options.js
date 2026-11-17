@@ -46,6 +46,7 @@
       const d = new Date(`${value}T12:00:00Z`);
       return `${value.slice(5).replace("-", "/")}(${"일월화수목금토"[d.getUTCDay()]})`;
     };
+    if (task.checklist) return task.dueDate ? `${date(task.dueDate)}까지` : "마감일 없음";
     const start = task.startDate || task.dueDate;
     if (!task.dueDate) return "날짜 없음";
     if (task.allDay !== false) return `${date(start)}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""} · 종일`;
@@ -60,6 +61,7 @@
     }
   }
   function fill(prefix, task = {}) {
+    $(`${prefix}-checklist`).checked = task.checklist === true;
     const v = normalize(task);
     $(`${prefix}-all-day`).checked = v.allDay;
     $(`${prefix}-start-time`).value = v.startTime || "";
@@ -67,7 +69,7 @@
     choices(prefix, v.scope === "private" ? assignee(task) : "shared"); sync(prefix);
   }
   function read(prefix) {
-    return { allDay: $(`${prefix}-all-day`).checked, startTime: $(`${prefix}-start-time`).value || null,
+    return { checklist: $(`${prefix}-checklist`).checked, allDay: $(`${prefix}-all-day`).checked, startTime: $(`${prefix}-start-time`).value || null,
       endTime: $(`${prefix}-end-time`).value || null, scope: $(`${prefix}-scope`).value === "shared" ? "shared" : "private",
       assigneeEmail: $(`${prefix}-scope`).value === "shared" ? null : $(`${prefix}-scope`).value };
   }

@@ -57,3 +57,25 @@
 .task-when .star svg { display:inline-block; }
 .trash-card { align-items:center; }
 .time-star { white-space:nowrap; }
+
+/* v1.15: 제목 버전 배지와 보기 전환 아이콘, 휴지통 조작입니다. */
+.version-label { display:inline-block; margin-left:.6em; font-size:.8rem; font-weight:500; color:var(--muted); letter-spacing:0; vertical-align:middle; }
+.priority-toolbar [data-layout] { min-width:44px; min-height:44px; justify-content:center; padding:9px 12px; }
+.priority-toolbar [data-layout] svg { display:block; width:22px; height:22px; }
+.trash-actions { display:flex; gap:6px; flex-wrap:wrap; }
+#trash-empty { font-size:.85rem; padding:6px 10px; }
+
+/* v1.16: 우선 일정과 체크리스트를 나란히 표시합니다. */
+.planning-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.priority-column, .checklist-column { min-width:0; }
+#priority-heading, #checklist-heading { font-size:1rem; gap:5px; flex-wrap:wrap; }
+#checklist-list { grid-template-columns:1fr; }
+#checklist-list .task-card { flex-wrap:wrap; }
+#checklist-list .task-when { font-size:1rem; }
+@media(max-width:600px) {
+  .planning-columns { gap:8px; }
+  .planning-columns .section-heading { flex-wrap:wrap; }
+  .priority-toolbar { gap:6px; }
+  .priority-toolbar .button { font-size:.75rem; padding:6px; }
+  #checklist-list .task-card { padding:8px; }
+}
