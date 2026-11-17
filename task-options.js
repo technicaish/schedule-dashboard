@@ -6,11 +6,13 @@
   function normalize(v) {
     const allDay = v.allDay !== false;
     return { allDay, startTime: !allDay && validTime(v.startTime) ? v.startTime : null,
-      endTime: !allDay && validTime(v.endTime) ? v.endTime : null, scope: v.scope === "private" ? "private" : "shared" };
+      endTime: !allDay && validTime(v.endTime) ? v.endTime : null, scope: v.scope === "private" ? "private" : "shared",
+      assigneeEmail: v.scope === "private" && typeof v.assigneeEmail === "string" && v.assigneeEmail.trim() ? v.assigneeEmail.trim().toLowerCase() : null };
   }
   function validate(v, start, end) {
     if (v.allDay !== undefined && typeof v.allDay !== "boolean") throw Error("종일 여부를 확인해주세요.");
     if (v.scope !== undefined && !["shared", "private"].includes(v.scope)) throw Error("개인·공동 구분을 확인해주세요.");
+    if (v.assigneeEmail != null && (typeof v.assigneeEmail !== "string" || v.assigneeEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.assigneeEmail))) throw Error("일정 당사자를 다시 선택해주세요.");
     const result = normalize(v);
     if (!result.allDay) {
       if (!start || !end || !validTime(v.startTime) || !validTime(v.endTime)) throw Error("시작·종료 날짜와 시간을 모두 입력해주세요.");
@@ -21,8 +23,22 @@
   function visibleTo(task, user, filter) {
     if (filter !== "mine") return true;
     if (!user) return false;
-    const a = task.createdBy || {};
-    return task.scope !== "private" || a.id === user.id || Boolean(a.email && user.email && a.email.toLowerCase() === user.email.toLowerCase());
+    return task.scope !== "private" || Boolean(user.email && assignee(task) === user.email.toLowerCase()) ||
+      (!task.assigneeEmail && task.createdBy?.id === user.id);
+  }
+  // 기존 개인 일정은 작성자를 당사자로 간주하며 서버 자료를 일괄 변경하지 않습니다.
+  function assignee(task) { return (task.assigneeEmail || task.createdBy?.email || "").toLowerCase(); }
+  function choices(prefix, selected) {
+    const select = $(`${prefix}-scope`), user = D.storage.currentUser();
+    const value = selected === undefined ? select.value : selected;
+    const colors = D.storage.getAppearance();
+    const emails = [...new Set([user?.email, colors.skyEmail, colors.pinkEmail, value !== "shared" ? value : null].filter(Boolean).map(v => v.toLowerCase()))];
+    select.replaceChildren(new Option("공동 일정", "shared"));
+    for (const email of emails) {
+      const who = email === user?.email?.toLowerCase() ? "내 일정" : "상대 일정";
+      select.append(new Option(`${who} (${email})`, email));
+    }
+    select.value = value && emails.includes(value) ? value : "shared";
   }
   function label(task) {
     const date = value => {
@@ -47,11 +63,12 @@
     $(`${prefix}-all-day`).checked = v.allDay;
     $(`${prefix}-start-time`).value = v.startTime || "";
     $(`${prefix}-end-time`).value = v.endTime || "";
-    $(`${prefix}-scope`).value = v.scope; sync(prefix);
+    choices(prefix, v.scope === "private" ? assignee(task) : "shared"); sync(prefix);
   }
   function read(prefix) {
     return { allDay: $(`${prefix}-all-day`).checked, startTime: $(`${prefix}-start-time`).value || null,
-      endTime: $(`${prefix}-end-time`).value || null, scope: $(`${prefix}-scope`).value };
+      endTime: $(`${prefix}-end-time`).value || null, scope: $(`${prefix}-scope`).value === "shared" ? "shared" : "private",
+      assigneeEmail: $(`${prefix}-scope`).value === "shared" ? null : $(`${prefix}-scope`).value };
   }
-  D.taskOptions = { normalize, validate, visibleTo, label, sync, fill, read };
+  D.taskOptions = { assignee, choices, normalize, validate, visibleTo, label, sync, fill, read };
 })();

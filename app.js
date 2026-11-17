@@ -56,6 +56,7 @@
     D.calendar.render($("calendars"), startMonth, items, today, selectedDay);
     if (selectedDay && $("day-dialog").open) V.renderDay(items, selectedDay, today, writable(), !S.canRead());
     connection(); updateControls();
+    D.taskOptions.choices("task"); D.taskOptions.choices("edit");
     // 완료 버튼을 눌러 목록이 이동해도 가능한 경우 초점을 유지합니다.
     if (focusId && !document.contains(focused)) {
       const target = Array.from(document.querySelectorAll("[data-id]")).find(node => node.dataset.id === focusId && node.dataset.action === focusAction && node.getClientRects().length);
@@ -84,7 +85,7 @@
     try {
       await action(); V.toast(success); return true;
     } catch (error) {
-      V.toast(error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
+      V.toast(error.code === "permission-denied" ? "저장 권한이 거절됐어요. Firebase에 v1.12 규칙을 게시했는지와 계정 허용 상태를 확인해주세요." : error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
       return false;
     } finally { busy = false; paint(); }
   }
@@ -119,7 +120,7 @@
     editing = { id: task.id, revision: task.revision };
     $("edit-start").value = task.startDate || task.dueDate || ""; $("edit-title").value = task.title; $("edit-due").value = task.dueDate || "";
     $("edit-important").checked = task.important; $("edit-completed").checked = task.completed;
-    $("edit-meta").textContent = `작성 ${task.createdBy.name} · ${M.stampLabel(task.createdAt)}\n마지막 수정 ${task.updatedBy.name} · ${M.stampLabel(task.updatedAt)}${task.completedAt ? `\n완료 ${M.stampLabel(task.completedAt)}` : ""}${task.restoredAt ? `\n백업에서 가져옴 ${task.restoredBy?.name || "알 수 없음"} · ${M.stampLabel(task.restoredAt)} (위 작성 기록은 원본 파일 기준)` : ""}`;
+    $("edit-meta").textContent = `일정 구분: ${task.scope === "private" ? "개인 일정 · " + (D.taskOptions.assignee(task) || task.createdBy.name) : "공동 일정"}\n작성 ${task.createdBy.name} · ${M.stampLabel(task.createdAt)}\n마지막 수정 ${task.updatedBy.name} · ${M.stampLabel(task.updatedAt)}${task.completedAt ? `\n완료 ${M.stampLabel(task.completedAt)}` : ""}${task.restoredAt ? `\n백업에서 가져옴 ${task.restoredBy?.name || "알 수 없음"} · ${M.stampLabel(task.restoredAt)} (위 작성 기록은 원본 파일 기준)` : ""}`;
     connection(); $("edit-dialog").showModal();
   }
   document.addEventListener("click", async event => {
@@ -167,6 +168,7 @@
     const theme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
     setTheme(theme); S.setPreferences({ theme });
   });
+  $("priority-info").addEventListener("click", () => $("priority-help").showModal());
   $("settings-open").addEventListener("click", () => $("settings-dialog").showModal());
   $("large-text").addEventListener("change", event => {
     document.documentElement.dataset.large = String(event.target.checked); S.setPreferences({ large: event.target.checked });

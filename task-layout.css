@@ -4,7 +4,7 @@
 .priority-toolbar > div { display:flex; gap:var(--task-control-gap); }
 .priority-toolbar button[aria-pressed="true"] { background:var(--accent); color:var(--bg); border-color:transparent; }
 #priority-list { grid-template-columns:1fr; max-height:none; overflow:visible; }
-#priority-list[data-layout="grid"] { grid-template-columns:repeat(auto-fit,minmax(min(100%, 320px),1fr)); }
+#priority-list[data-layout="grid"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .task-title { flex-wrap:wrap; gap:.5rem; white-space:normal; text-align:left; }
 .task-when { font-size:var(--task-date-size); font-weight:800; line-height:1.45; }
 .task-title .title-text { white-space:normal; overflow-wrap:anywhere; }
@@ -16,7 +16,20 @@
 .time-fields input { width:8rem; }
 #priority-list[data-layout="grid"] .task-when { flex-basis:100%; }
 [data-large="true"] { --task-date-size:1.45rem; }
-@media(max-width:600px) { .task-card { flex-wrap:wrap; } .task-side { margin-left:auto; } .task-when { flex-basis:100%; } .priority-toolbar .button { padding:.6rem .7rem; } }
+@media(max-width:600px) { .task-card { flex-wrap:wrap; } .task-side { margin-left:auto; } .priority-toolbar .button { padding:.6rem .7rem; } }
 
 /* 입력 설정은 줄 전체를 사용합니다. */
 .composer-fields > .task-options { flex-basis:100%; }
+
+/* v1.12: 구분 표시를 팝업으로 옮기고 넓은 화면에서는 3열로 표시합니다. */
+.task-card { padding:8px 12px; gap:10px; }
+.task-title { gap:.35rem .65rem; }
+.task-when { line-height:1.3; }
+#priority-list[data-layout="grid"] .task-card { align-items:flex-start; }
+#priority-list[data-layout="grid"] .task-title .title-text { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.info-button { padding:0 4px; border:0; background:transparent; color:var(--muted); font:inherit; cursor:pointer; }
+#priority-help p { margin:1rem 0; line-height:1.7; }
+.due-field { min-width:0; }
+.due-field input { width:100%; min-width:0; box-sizing:border-box; }
+@media(max-width:760px) { #priority-list[data-layout="grid"] { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { #priority-list[data-layout="grid"] { grid-template-columns:1fr; } }

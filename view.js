@@ -29,7 +29,7 @@
   // 작성자 색상은 허용된 서버 설정으로 정하고 실제 이메일은 코드에 넣지 않습니다.
   function tone(task) {
     if (task.important) return "red";
-    const colors = D.storage.getAppearance(), email = (task.createdBy.email || "").toLowerCase();
+    const colors = D.storage.getAppearance(), email = (task.scope === "private" ? D.taskOptions.assignee(task) : task.createdBy.email || "").toLowerCase();
     return email && email === colors.skyEmail ? "sky" : email && email === colors.pinkEmail ? "pink" : "default";
   }
   function taskCard(task, reference, online) {
@@ -49,9 +49,7 @@
     title.append(el("strong", "task-when", D.taskOptions.label(task)));
     if (task.important) { const star = el("span", "star"); star.title = "중요한 일"; star.append(icon("star")); title.append(star); }
     title.append(el("span", "title-text", task.title));
-    const meta = el("div", "task-meta");
-    meta.append(el("span", "", task.scope === "private" ? "개인 일정" : "공동 일정"));
-    content.append(title, meta);
+    content.append(title); // 구분·작성 기록은 수정 팝업에서 확인합니다.
     const side = el("div", "task-side");
     side.append(el("span", `due-badge ${due.type}`, due.text));
     card.append(check, content, side);
