@@ -69,10 +69,10 @@ service cloud.firestore {
         &amp;&amp; (data.get(&#x27;scope&#x27;, &#x27;shared&#x27;) == &#x27;private&#x27; || assignee == null)
         &amp;&amp; allDay is bool &amp;&amp; data.get(&#x27;scope&#x27;, &#x27;shared&#x27;) in [&#x27;shared&#x27;, &#x27;private&#x27;]
         &amp;&amp; (allDay ? (first == null &amp;&amp; last == null) :
-          (start is string &amp;&amp; data.dueDate is string &amp;&amp; first is string &amp;&amp; last is string
+          (start is string &amp;&amp; data.dueDate is string &amp;&amp; first is string
           &amp;&amp; first.matches(&#x27;^([01][0-9]|2[0-3]):[0-5][0-9]$&#x27;)
-          &amp;&amp; last.matches(&#x27;^([01][0-9]|2[0-3]):[0-5][0-9]$&#x27;)
-          &amp;&amp; (start &lt; data.dueDate || (start == data.dueDate &amp;&amp; first &lt; last))));
+          &amp;&amp; (last == null || (last is string &amp;&amp; last.matches(&#x27;^([01][0-9]|2[0-3]):[0-5][0-9]$&#x27;)
+          &amp;&amp; (start &lt; data.dueDate || (start == data.dueDate &amp;&amp; first &lt; last))))));
     }
     function content(data) {
       return options(data) &amp;&amp; dates(data) &amp;&amp; data.title is string &amp;&amp; data.title.size() &gt; 0 &amp;&amp; data.title.size() &lt;= 120

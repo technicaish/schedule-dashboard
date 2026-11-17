@@ -31,5 +31,20 @@
 #priority-help p { margin:1rem 0; line-height:1.7; }
 .due-field { min-width:0; }
 .due-field input { width:100%; min-width:0; box-sizing:border-box; }
-@media(max-width:760px) { #priority-list[data-layout="grid"] { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:480px) { #priority-list[data-layout="grid"] { grid-template-columns:1fr; } }
+/* v1.13: 화면 폭과 무관하게 세 칸을 유지하고 중요도는 굵기로 구분합니다. */
+.task-card .task-title, .task-card .task-when { font-weight:400; }
+.task-card.important .task-title, .task-card.important .task-when { font-weight:800; }
+.day-task { font-weight:400; }
+.day-task[data-important="true"] { font-weight:800; }
+#priority-list[data-layout="grid"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#priority-list[data-layout="grid"] .task-card { display:grid; grid-template-columns:24px minmax(0,1fr); gap:6px; }
+#priority-list[data-layout="grid"] .task-side { grid-column:1 / -1; justify-self:end; }
+#priority-list[data-layout="grid"] .task-content { min-width:0; }
+#priority-list[data-layout="grid"] .task-when { overflow-wrap:anywhere; }
+@media(max-width:600px) {
+  #priority-list[data-layout="grid"] { gap:5px; }
+  #priority-list[data-layout="grid"] .task-card { padding:7px 5px; grid-template-columns:minmax(0,1fr); }
+  #priority-list[data-layout="grid"] .task-check { width:24px; height:24px; }
+  #priority-list[data-layout="grid"] .task-when { font-size:1rem; }
+  #priority-list[data-layout="grid"] .task-title { font-size:1rem; letter-spacing:0; }
+}

@@ -15,8 +15,8 @@
     if (v.assigneeEmail != null && (typeof v.assigneeEmail !== "string" || v.assigneeEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.assigneeEmail))) throw Error("일정 당사자를 다시 선택해주세요.");
     const result = normalize(v);
     if (!result.allDay) {
-      if (!start || !end || !validTime(v.startTime) || !validTime(v.endTime)) throw Error("시작·종료 날짜와 시간을 모두 입력해주세요.");
-      if (`${start}T${v.startTime}` >= `${end}T${v.endTime}`) throw Error("종료 시각은 시작 시각보다 뒤여야 해요.");
+      if (!start || !end || !validTime(v.startTime) || (v.endTime != null && v.endTime !== "" && !validTime(v.endTime))) throw Error("날짜와 시작 시간을 입력해주세요. 종료 시간은 비워둘 수 있어요.");
+      if (result.endTime && `${start}T${v.startTime}` >= `${end}T${v.endTime}`) throw Error("종료 시각은 시작 시각보다 뒤여야 해요.");
     }
     return result;
   }
@@ -49,13 +49,14 @@
     const start = task.startDate || task.dueDate;
     if (!task.dueDate) return "날짜 없음";
     if (task.allDay !== false) return `${date(start)}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""} · 종일`;
+    if (!task.endTime) return `${date(start)} ${task.startTime || ""}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""} · 종료 미정`;
     return `${date(start)} ${task.startTime || ""} ~ ${start !== task.dueDate ? date(task.dueDate) + " " : ""}${task.endTime || ""}`;
   }
   function sync(prefix) {
     const allDay = $(`${prefix}-all-day`).checked;
     $(`${prefix}-time-fields`).hidden = allDay;
     for (const part of ["start-time", "end-time"]) {
-      $(`${prefix}-${part}`).disabled = allDay; $(`${prefix}-${part}`).required = !allDay;
+      $(`${prefix}-${part}`).disabled = allDay; $(`${prefix}-${part}`).required = !allDay && part === "start-time";
     }
   }
   function fill(prefix, task = {}) {

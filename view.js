@@ -28,7 +28,7 @@
   }
   // 작성자 색상은 허용된 서버 설정으로 정하고 실제 이메일은 코드에 넣지 않습니다.
   function tone(task) {
-    if (task.important) return "red";
+    if (task.scope !== "private") return "red";
     const colors = D.storage.getAppearance(), email = (task.scope === "private" ? D.taskOptions.assignee(task) : task.createdBy.email || "").toLowerCase();
     return email && email === colors.skyEmail ? "sky" : email && email === colors.pinkEmail ? "pink" : "default";
   }
@@ -64,8 +64,9 @@
   function renderLists(items, reference, online, locked = false) {
     if (locked) items = [];
     const groups = M.groupTasks(items, reference);
+    groups.completed = groups.completed.filter(task => M.recentCompleted(task, reference));
     groups.priority = groups.priority.filter(task => D.taskOptions.visibleTo(task, D.storage.currentUser(), D.storage.getPreferences().filter));
-    const messages = { priority: "급하게 챙길 일이 없어요. 여유로운 하루 보내세요.", other: "나머지 할 일이 없어요.", completed: "함께 해낸 일들이 여기에 쌓여요." };
+    const messages = { priority: "급하게 챙길 일이 없어요. 여유로운 하루 보내세요.", other: "나머지 할 일이 없어요.", completed: "최근 2개월 동안 완료한 일이 없어요." };
     if (locked) for (const key of Object.keys(messages)) messages[key] = "로그인과 접근 권한 설정을 마치면 일정을 볼 수 있어요.";
     for (const key of ["priority", "other", "completed"]) {
       document.getElementById(`${key}-count`).textContent = groups[key].length;

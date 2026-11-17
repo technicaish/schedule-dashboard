@@ -102,6 +102,16 @@
     groups.completed.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || ""));
     return groups;
   }
+  function completionCutoff(reference = today()) {
+    const first = monthStart(reference, -2), next = monthStart(first, 1);
+    const lastDay = Number(addDays(next, -1).slice(-2));
+    return `${first.slice(0, 8)}${pad(Math.min(Number(reference.slice(-2)), lastDay))}`;
+  }
+  function recentCompleted(task, reference = today()) {
+    if (!task.completedAt || !Number.isFinite(Date.parse(task.completedAt))) return false;
+    const day = today(new Date(task.completedAt));
+    return day >= completionCutoff(reference) && day <= reference;
+  }
   function reloadSlot(date = new Date()) {
     const p = parts(date);
     const hour = Number(p.hour);
@@ -110,5 +120,5 @@
   }
   function onDate(task, date) { return Boolean(task.dueDate && (task.startDate || task.dueDate) <= date && date <= task.dueDate); }
   function rangeLabel(task) { return task.startDate && task.startDate !== task.dueDate ? `${dateLabel(task.startDate)} ~ ${dateLabel(task.dueDate)}` : dateLabel(task.dueDate); }
-  D.model = { onDate, rangeLabel, parts, today, validDate, addDays, monthStart, diffDays, dateLabel, stampLabel, normalize, validate, dueInfo, sortTasks, groupTasks, reloadSlot };
+  D.model = { completionCutoff, recentCompleted, onDate, rangeLabel, parts, today, validDate, addDays, monthStart, diffDays, dateLabel, stampLabel, normalize, validate, dueInfo, sortTasks, groupTasks, reloadSlot };
 })();

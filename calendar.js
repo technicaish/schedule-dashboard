@@ -44,7 +44,7 @@
         cell.append(V.el("span", "day-number", String(Number(date.slice(-2)))));
         if (!outside && tasks.length) {
           const firstTask = tasks.find(task => task.important) || tasks[0];
-          const label = V.el("span", "day-task", firstTask.title); label.dataset.tone = V.tone(firstTask); cell.append(label);
+          const label = V.el("span", "day-task", firstTask.title); label.dataset.important = String(firstTask.important); label.dataset.tone = V.tone(firstTask); cell.append(label);
           if (tasks.length > 1) cell.append(V.el("span", "day-more", `외 ${tasks.length - 1}개`));
         }
         grid.append(cell);

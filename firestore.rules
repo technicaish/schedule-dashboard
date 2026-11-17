@@ -35,10 +35,10 @@ service cloud.firestore {
         && (data.get('scope', 'shared') == 'private' || assignee == null)
         && allDay is bool && data.get('scope', 'shared') in ['shared', 'private']
         && (allDay ? (first == null && last == null) :
-          (start is string && data.dueDate is string && first is string && last is string
+          (start is string && data.dueDate is string && first is string
           && first.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
-          && last.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
-          && (start < data.dueDate || (start == data.dueDate && first < last))));
+          && (last == null || (last is string && last.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+          && (start < data.dueDate || (start == data.dueDate && first < last))))));
     }
     function content(data) {
       return options(data) && dates(data) && data.title is string && data.title.size() > 0 && data.title.size() <= 120
