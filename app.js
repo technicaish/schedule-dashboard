@@ -4,6 +4,7 @@
   const D = window.Dashboard, M = D.model, V = D.view, S = D.storage;
   const $ = id => document.getElementById(id);
   let items = [], today = M.today(), startMonth = M.monthStart(today), selectedDay = null;
+  let composerDirty = false;
   let editing = null, busy = false, lastSlot = M.reloadSlot();
   const online = () => navigator.onLine;
   const writable = () => online() && !busy && !D.backup?.busy && S.canWrite();
@@ -19,6 +20,7 @@
   setTheme(prefs.theme === "dark" ? "dark" : "light");
   document.documentElement.dataset.large = String(prefs.large === true);
   $("large-text").checked = prefs.large === true;
+  D.taskOptions.fill("task"); D.taskOptions.fill("edit");
   $("task-due").value = today; $("task-start").value = today;
 
   function dateShortcuts() {
@@ -46,22 +48,34 @@
       for (const id of ["edit-dialog", "confirm-dialog"]) if ($(id).open) $(id).close();
       for (const id of ["task-title", "edit-title", "edit-due", "edit-start"]) $(id).value = "";
       $("edit-meta").textContent = ""; $("confirm-message").textContent = "";
-      $("task-important").checked = false; editing = null;
+      $("task-important").checked = false; D.taskOptions.fill("task"); D.taskOptions.fill("edit"); composerDirty = false; editing = null;
     }
     const focused = document.activeElement;
     const focusId = focused && focused.dataset.id, focusAction = focused && focused.dataset.action;
     V.renderLists(items, today, writable(), !S.canRead());
     D.calendar.render($("calendars"), startMonth, items, today, selectedDay);
     if (selectedDay && $("day-dialog").open) V.renderDay(items, selectedDay, today, writable(), !S.canRead());
-    connection();
+    connection(); updateControls();
     // 완료 버튼을 눌러 목록이 이동해도 가능한 경우 초점을 유지합니다.
     if (focusId && !document.contains(focused)) {
       const target = Array.from(document.querySelectorAll("[data-id]")).find(node => node.dataset.id === focusId && node.dataset.action === focusAction && node.getClientRects().length);
       if (target) target.focus({ preventScroll: true });
     }
   }
+  function updateControls() {
+    const prefs = S.getPreferences(), layout = prefs.layout === "grid" ? "grid" : "list";
+    $("priority-list").dataset.layout = layout;
+    for (const key of ["filter", "layout"]) document.querySelectorAll(`[data-${key}]`).forEach(button => {
+      if (button.tagName !== "BUTTON") return;
+      button.setAttribute("aria-pressed", String(button.dataset[key] === (key === "layout" ? layout : prefs.filter || "all")));
+    });
+  }
+  for (const key of ["filter", "layout"]) document.querySelectorAll(`button[data-${key}]`).forEach(button => {
+    button.addEventListener("click", () => { S.setPreferences({ [key]: button.dataset[key] }); paint(); });
+  });
+  for (const prefix of ["task", "edit"]) $(`${prefix}-all-day`).addEventListener("change", () => D.taskOptions.sync(prefix));
   function inputValues(prefix) {
-    return { startDate: $(`${prefix}-start`).value || null, title: $(`${prefix}-title`).value, dueDate: $(`${prefix}-due`).value || null, important: $(`${prefix}-important`).checked,
+    return { ...D.taskOptions.read(prefix), startDate: $(`${prefix}-start`).value || null, title: $(`${prefix}-title`).value, dueDate: $(`${prefix}-due`).value || null, important: $(`${prefix}-important`).checked,
       completed: prefix === "edit" ? $("edit-completed").checked : false };
   }
   async function change(action, success) {
@@ -87,16 +101,20 @@
     event.preventDefault();
     const input = inputValues("task");
     if (await change(() => S.add(input), "할 일을 추가했어요.")) {
-      $("add-form").reset(); $("task-due").value = selectedDay || today; $("task-start").value = $("task-due").value;
-      dateShortcuts(); $("task-title").focus();
+      $("add-form").reset(); composerDirty = false; $("task-due").value = selectedDay || today; $("task-start").value = $("task-due").value;
+      D.taskOptions.fill("task"); dateShortcuts(); $("task-title").focus();
     }
   });
-  $("add-form").addEventListener("change", dateShortcuts);
+  $("add-form").addEventListener("input", () => { composerDirty = true; });
+  $("add-form").addEventListener("change", () => { composerDirty = true; dateShortcuts(); });
   document.querySelectorAll("[data-due]").forEach(button => button.addEventListener("click", () => {
     $("task-due").value = button.dataset.due === "today" ? today : button.dataset.due === "tomorrow" ? M.addDays(today, 1) : "";
-    $("task-start").value = $("task-due").value; dateShortcuts();
+    $("task-start").value = $("task-due").value;
+    if (!$("task-due").value) { $("task-all-day").checked = true; D.taskOptions.sync("task"); }
+    dateShortcuts();
   }));
   function openEdit(task) {
+    D.taskOptions.fill("edit", task);
     if ($("day-dialog").open) $("day-dialog").close();
     editing = { id: task.id, revision: task.revision };
     $("edit-start").value = task.startDate || task.dueDate || ""; $("edit-title").value = task.title; $("edit-due").value = task.dueDate || "";
@@ -166,7 +184,7 @@
       today = nextDay; dateShortcuts(); paint();
     }
     const slot = M.reloadSlot(now);
-    const hasDraft = $("task-title").value.trim() || $("task-important").checked;
+    const hasDraft = composerDirty || $("task-title").value.trim() || $("task-important").checked;
     if (slot !== lastSlot && !hasDraft && !busy && !D.backup?.busy && !S.authBusy() && online() && !document.querySelector("dialog[open]") && document.visibilityState === "visible") {
       lastSlot = slot; window.location.reload();
     }

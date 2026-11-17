@@ -8,16 +8,18 @@
   <meta name="description" content="둘이 함께 챙기는 일정과 할 일, 우리의 하루">
   <title>우리의 하루 · 일정 대시보드</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=111">
+  <link rel="stylesheet" href="task-layout.css?v=111">
   <!-- 순서대로 읽는 일반 자바스크립트입니다. 별도의 설치나 빌드가 없습니다. -->
-  <script defer src="config.js?v=7"></script>
-  <script defer src="model.js?v=7"></script>
-  <script defer src="storage.js?v=7"></script>
-  <script defer src="view.js?v=7"></script>
-  <script defer src="calendar.js?v=7"></script>
-  <script defer src="app.js?v=7"></script>
-  <script defer src="backup-model.js?v=7"></script>
-  <script defer src="backup.js?v=7"></script>
+  <script defer src="config.js?v=111"></script>
+  <script defer src="task-options.js?v=111"></script>
+  <script defer src="model.js?v=111"></script>
+  <script defer src="storage.js?v=111"></script>
+  <script defer src="view.js?v=111"></script>
+  <script defer src="calendar.js?v=111"></script>
+  <script defer src="app.js?v=111"></script>
+  <script defer src="backup-model.js?v=111"></script>
+  <script defer src="backup.js?v=111"></script>
 </head>
 <body>
   <a class="skip-link" href="#task-title">할 일 입력으로 건너뛰기</a>
@@ -38,6 +40,10 @@
     <main>
       <section class="priority-section" aria-labelledby="priority-heading">
         <div class="section-heading"><div><h2 id="priority-heading">먼저 챙길 일 <span id="priority-count" class="count">0</span></h2><p>중요한 일과 1주 안에 챙길 일을 모았어요.</p></div><span id="overdue-summary" class="summary-badge" hidden></span></div>
+        <div class="priority-toolbar">
+          <div role="group" aria-label="먼저 챙길 일 표시 범위"><button type="button" class="button subtle" data-filter="mine">내 일 + 공동</button><button type="button" class="button subtle" data-filter="all">전체</button></div>
+          <div role="group" aria-label="목록 모양"><button type="button" class="button subtle" data-layout="list">목록형</button><button type="button" class="button subtle" data-layout="grid">바둑판형</button></div>
+        </div>
         <div id="priority-list" class="task-grid"></div>
         <div class="folded-lists">
           <details id="other-details"><summary><span>나머지 할 일 <b id="other-count">0</b></span><span class="fold-hint">여유를 두고 챙겨요</span></summary><div id="other-list" class="task-grid folded-content"></div></details>
@@ -53,6 +59,10 @@
             <div class="title-field"><label class="sr-only" for="task-title">할 일 제목</label><input id="task-title" name="title" maxlength="120" required autocomplete="off" placeholder="무엇을 함께 챙길까요?"></div>
             <div class="due-field"><label for="task-start">시작일</label><input id="task-start" type="date" aria-label="시작일"></div>
             <div class="due-field"><label for="task-due">종료일 / 마감일</label><input id="task-due" name="dueDate" type="date" aria-label="마감일"><div class="date-shortcuts" aria-label="마감일 빠른 선택"><button type="button" data-due="today">오늘</button><button type="button" data-due="tomorrow">내일</button><button type="button" data-due="none">날짜 없음</button></div></div>
+<div class="task-options"><label><input id="task-all-day" type="checkbox" checked> 종일</label>
+              <label for="task-scope">일정 구분</label><select id="task-scope"><option value="shared">공동 일정</option><option value="private">작성자 개인 일정</option></select>
+              <div id="task-time-fields" class="time-fields" hidden><label>시작 시간 <input id="task-start-time" type="time"></label><label>종료 시간 <input id="task-end-time" type="time"></label><span>한국시간</span></div>
+            </div>
             <label class="important-choice"><input id="task-important" name="important" type="checkbox"><span data-icon="star"></span><span>중요</span></label>
             <button type="submit" class="button primary"><span data-icon="plus"></span>추가</button>
           </fieldset>
@@ -75,7 +85,7 @@
         <div class="connection-copy"><h2 id="setup-state">연결정보 입력이 필요해요</h2><p id="setup-detail">설정 안내를 열어 Firebase 프로젝트를 만들어주세요.</p><p class="connection-project">프로젝트 ID: <strong id="setup-project">아직 입력하지 않음</strong></p></div>
         <div class="connection-actions"><button id="check-connection" class="button primary" type="button">다시 연결</button><a class="button subtle" href="SETUP_ACCESS.html" target="_blank" rel="noopener">허용 목록 설정</a></div>
       </section>
-    <div class="demo-notice"><span class="demo-badge">v1.1 · 공동 일정</span><p>로그인과 접근 권한을 설정하기 전까지 일정은 비워두고 입력을 잠급니다.</p><span class="connection" id="connection-status"><i></i>인터넷 연결 확인 중</span></div>
+    <div class="demo-notice"><span class="demo-badge">v1.11 · 공동 일정</span><p>로그인과 접근 권한을 설정하기 전까지 일정은 비워두고 입력을 잠급니다.</p><span class="connection" id="connection-status"><i></i>인터넷 연결 확인 중</span></div>
     <div id="offline-banner" class="notice warning" role="status" hidden>인터넷 연결이 끊겼어요. 기존 목록은 볼 수 있고, 다시 연결되면 수정할 수 있어요.</div>
     <div id="storage-warning" class="notice warning" role="alert" hidden></div>
     </main>
@@ -95,6 +105,10 @@
       <label for="edit-title">제목</label><input id="edit-title" maxlength="120" required autocomplete="off">
       <label for="edit-start">시작일</label><input id="edit-start" type="date">
       <label for="edit-due">종료일 / 마감일 <span class="muted">비워두면 날짜 없음</span></label><input id="edit-due" type="date">
+<div class="task-options"><label><input id="edit-all-day" type="checkbox" checked> 종일</label>
+              <label for="edit-scope">일정 구분</label><select id="edit-scope"><option value="shared">공동 일정</option><option value="private">작성자 개인 일정</option></select>
+              <div id="edit-time-fields" class="time-fields" hidden><label>시작 시간 <input id="edit-start-time" type="time"></label><label>종료 시간 <input id="edit-end-time" type="time"></label><span>한국시간</span></div>
+            </div>
       <div class="edit-checks"><label><input id="edit-important" type="checkbox"> 중요한 일</label><label><input id="edit-completed" type="checkbox"> 완료한 일</label></div>
       <p id="edit-meta" class="edit-meta"></p>
       <div class="dialog-actions"><button id="delete-task" class="button danger" type="button">삭제</button><span class="spacer"></span><button class="button subtle" type="button" data-close="edit-dialog">취소</button><button class="button primary" type="submit">저장</button></div>
@@ -114,7 +128,7 @@
   </dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-heading">
     <div class="dialog-head"><h2 id="settings-heading">화면 설정</h2><button class="icon-button" type="button" data-close="settings-dialog" aria-label="설정 닫기"><span data-icon="close"></span></button></div>
-    <p class="help-text"><a href="UPDATE.html" target="_blank" rel="noopener">v1.1 업데이트 · 작성자 색상 설정</a></p>
+    <p class="help-text"><a href="UPDATE.html" target="_blank" rel="noopener">v1.11 업데이트 · 작성자 색상 설정</a></p>
     <div class="settings-row"><span>계정</span><span id="settings-account">로그인 확인 중</span></div><p class="help-text">사용자 등록·해제는 Firebase 관리 화면에서 합니다.</p>
     <div class="settings-row"><label for="large-text">글씨 조금 더 크게</label><input id="large-text" type="checkbox"></div>
     <div class="settings-row"><span>자동 새로고침</span><span>매일 00 · 06 · 12 · 18시</span></div><p class="help-text">한국시간 기준이며, 입력 중에는 잠시 미뤄요.</p>

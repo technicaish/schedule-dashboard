@@ -46,10 +46,11 @@
     const title = el("button", "task-title");
     title.type = "button"; title.dataset.action = "edit"; title.dataset.id = task.id;
     title.title = `수정: ${task.title}`; title.setAttribute("aria-label", `수정: ${task.title}`);
+    title.append(el("strong", "task-when", D.taskOptions.label(task)));
     if (task.important) { const star = el("span", "star"); star.title = "중요한 일"; star.append(icon("star")); title.append(star); }
     title.append(el("span", "title-text", task.title));
     const meta = el("div", "task-meta");
-    meta.append(el("span", "", M.rangeLabel(task)), el("span", "", `작성 ${task.createdBy.name} · 수정 ${task.updatedBy.name}`));
+    meta.append(el("span", "", task.scope === "private" ? "개인 일정" : "공동 일정"));
     content.append(title, meta);
     const side = el("div", "task-side");
     side.append(el("span", `due-badge ${due.type}`, due.text));
@@ -65,6 +66,7 @@
   function renderLists(items, reference, online, locked = false) {
     if (locked) items = [];
     const groups = M.groupTasks(items, reference);
+    groups.priority = groups.priority.filter(task => D.taskOptions.visibleTo(task, D.storage.currentUser(), D.storage.getPreferences().filter));
     const messages = { priority: "급하게 챙길 일이 없어요. 여유로운 하루 보내세요.", other: "나머지 할 일이 없어요.", completed: "함께 해낸 일들이 여기에 쌓여요." };
     if (locked) for (const key of Object.keys(messages)) messages[key] = "로그인과 접근 권한 설정을 마치면 일정을 볼 수 있어요.";
     for (const key of ["priority", "other", "completed"]) {

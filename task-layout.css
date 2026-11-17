@@ -1,0 +1,22 @@
+/* 날짜·시간을 크게 표시하고 목록형과 바둑판형을 전환합니다. */
+:root { --task-date-size: 1.25rem; --task-control-gap: .5rem; }
+.priority-toolbar { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin: .5rem 0 1rem; }
+.priority-toolbar > div { display:flex; gap:var(--task-control-gap); }
+.priority-toolbar button[aria-pressed="true"] { background:var(--accent); color:var(--bg); border-color:transparent; }
+#priority-list { grid-template-columns:1fr; max-height:none; overflow:visible; }
+#priority-list[data-layout="grid"] { grid-template-columns:repeat(auto-fit,minmax(min(100%, 320px),1fr)); }
+.task-title { flex-wrap:wrap; gap:.5rem; white-space:normal; text-align:left; }
+.task-when { font-size:var(--task-date-size); font-weight:800; line-height:1.45; }
+.task-title .title-text { white-space:normal; overflow-wrap:anywhere; }
+.task-options { display:flex; align-items:center; flex-wrap:wrap; gap:.75rem; grid-column:1 / -1; }
+.task-options label { display:flex; align-items:center; gap:.4rem; }
+.task-options select { font:inherit; color:inherit; background:var(--surface, white); border:1px solid var(--line); border-radius:10px; padding:.65rem; }
+.time-fields { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+.time-fields[hidden] { display:none; }
+.time-fields input { width:8rem; }
+#priority-list[data-layout="grid"] .task-when { flex-basis:100%; }
+[data-large="true"] { --task-date-size:1.45rem; }
+@media(max-width:600px) { .task-card { flex-wrap:wrap; } .task-side { margin-left:auto; } .task-when { flex-basis:100%; } .priority-toolbar .button { padding:.6rem .7rem; } }
+
+/* 입력 설정은 줄 전체를 사용합니다. */
+.composer-fields > .task-options { flex-basis:100%; }

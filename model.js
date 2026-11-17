@@ -56,7 +56,7 @@
   function normalize(input) {
     const row = input && typeof input === "object" ? input : {};
     return {
-      ...row, id: String(row.id || ""), schemaVersion: Number(row.schemaVersion) || 1,
+      ...row, ...D.taskOptions.normalize(row), id: String(row.id || ""), schemaVersion: Number(row.schemaVersion) || 1,
       revision: Number.isSafeInteger(row.revision) && row.revision >= 0 ? row.revision : 0,
       title: typeof row.title === "string" && row.title.trim() ? row.title : "제목 없는 일",
       dueDate: validDate(row.dueDate) ? row.dueDate : null,
@@ -75,7 +75,7 @@
     if (input.dueDate && !validDate(input.dueDate)) throw new Error("마감일을 올바른 날짜로 선택해주세요.");
     const dueDate = input.dueDate || null, startDate = input.startDate || dueDate;
     if (startDate && (!validDate(startDate) || !dueDate || startDate > dueDate)) throw new Error("종료일은 시작일과 같거나 뒤여야 합니다. 날짜 없음은 두 날짜를 모두 비워주세요.");
-    return { title, startDate, dueDate, important: input.important === true, completed: input.completed === true };
+    return { ...D.taskOptions.validate(input, startDate, dueDate), title, startDate, dueDate, important: input.important === true, completed: input.completed === true };
   }
   function dueInfo(task, reference = today()) {
     if (task.completed) return { text: "완료", type: "done" };
@@ -89,7 +89,7 @@
   }
   function sortTasks(a, b) {
     return (a.dueDate || "9999-99-99").localeCompare(b.dueDate || "9999-99-99") ||
-      Number(b.important) - Number(a.important) || (a.createdAt || "").localeCompare(b.createdAt || "") || a.id.localeCompare(b.id);
+      (a.endTime || "23:59").localeCompare(b.endTime || "23:59") || Number(b.important) - Number(a.important) || (a.createdAt || "").localeCompare(b.createdAt || "") || a.id.localeCompare(b.id);
   }
   function groupTasks(items, reference = today()) {
     const groups = { priority: [], other: [], completed: [] };
