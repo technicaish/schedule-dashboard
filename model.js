@@ -62,6 +62,7 @@
       dueDate: validDate(row.dueDate) ? row.dueDate : null,
       startDate: validDate(row.dueDate) ? (validDate(row.startDate) && row.startDate <= row.dueDate ? row.startDate : row.dueDate) : null,
       important: row.important === true, completed: row.completed === true,
+      deletedAt: typeof row.deletedAt === "string" ? row.deletedAt : null,
       completedAt: typeof row.completedAt === "string" ? row.completedAt : null,
       createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
       updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : null,

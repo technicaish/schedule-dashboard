@@ -46,8 +46,8 @@
     const title = el("button", "task-title");
     title.type = "button"; title.dataset.action = "edit"; title.dataset.id = task.id;
     title.title = `수정: ${task.title}`; title.setAttribute("aria-label", `수정: ${task.title}`);
-    title.append(el("strong", "task-when", D.taskOptions.label(task)));
-    if (task.important) { const star = el("span", "star"); star.title = "중요한 일"; star.append(icon("star")); title.append(star); }
+    const when = el("strong", "task-when", D.taskOptions.label(task)); title.append(when);
+    if (task.important) { const star = el("span", "star"); star.title = "중요한 일"; star.append(icon("star")); const words = when.textContent.split(" "); const tail = words.pop(); when.textContent = words.join(" ") + (words.length ? " " : ""); const pair = el("span", "time-star", tail); pair.append(star); when.append(pair); }
     title.append(el("span", "title-text", task.title));
     content.append(title); // 구분·작성 기록은 수정 팝업에서 확인합니다.
     const side = el("div", "task-side");
@@ -62,7 +62,7 @@
     root.replaceChildren(fragment);
   }
   function renderLists(items, reference, online, locked = false) {
-    if (locked) items = [];
+    items = locked ? [] : items.filter(task => !task.deletedAt);
     const groups = M.groupTasks(items, reference);
     groups.completed = groups.completed.filter(task => M.recentCompleted(task, reference));
     groups.priority = groups.priority.filter(task => D.taskOptions.visibleTo(task, D.storage.currentUser(), D.storage.getPreferences().filter));
@@ -80,7 +80,7 @@
     document.getElementById("day-heading").textContent = M.dateLabel(date, true);
     const root = document.getElementById("day-list");
     if (locked) { root.replaceChildren(el("p", "empty-state", "로그인과 접근 권한 설정 후 그날 일정을 확인할 수 있어요.")); return; }
-    const all = items.filter(task => M.onDate(task, date)).sort(M.sortTasks);
+    const all = items.filter(task => !task.deletedAt && M.onDate(task, date)).sort(M.sortTasks);
     const open = all.filter(task => !task.completed), done = all.filter(task => task.completed);
     taskList(root, open, reference, online, done.length ? "미완료 일정이 없어요." : "아직 일정이 없는 날이에요.");
     if (done.length) {

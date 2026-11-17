@@ -8,7 +8,7 @@
     // 표시할 3개월만 순회하여 긴 기간 일정도 날짜 수만큼 무한히 늘리지 않습니다.
     const end = M.monthStart(start, 3);
     for (let date = start; date < end; date = M.addDays(date, 1)) {
-      const dayItems = items.filter(task => M.onDate(task, date));
+      const dayItems = items.filter(task => !task.deletedAt && M.onDate(task, date));
       total.set(date, dayItems.length); active.set(date, dayItems.filter(task => !task.completed));
     }
     const fragment = document.createDocumentFragment();

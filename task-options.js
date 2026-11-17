@@ -49,7 +49,7 @@
     const start = task.startDate || task.dueDate;
     if (!task.dueDate) return "날짜 없음";
     if (task.allDay !== false) return `${date(start)}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""} · 종일`;
-    if (!task.endTime) return `${date(start)} ${task.startTime || ""}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""} · 종료 미정`;
+    if (!task.endTime) return `${date(start)} ${task.startTime || ""}${start !== task.dueDate ? ` ~ ${date(task.dueDate)}` : ""}`;
     return `${date(start)} ${task.startTime || ""} ~ ${start !== task.dueDate ? date(task.dueDate) + " " : ""}${task.endTime || ""}`;
   }
   function sync(prefix) {

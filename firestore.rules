@@ -54,7 +54,9 @@ service cloud.firestore {
     }
     function oldTime(value) { return value == null || value is timestamp; }
     function restored(data) {
-      return options(data) && dates(data) && data.restoredAt == request.time && actor(data.restoredBy)
+      return (data.get('deletedAt', null) == null ||
+        (data.deletedAt is timestamp && data.deletedAt <= request.time && oldPerson(data.deletedBy)))
+        && options(data) && dates(data) && data.restoredAt == request.time && actor(data.restoredBy)
         && data.title is string && data.title.size() > 0 && data.title.size() <= 120
         && (data.dueDate == null || (data.dueDate is string
           && data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')))
@@ -81,14 +83,25 @@ service cloud.firestore {
         && request.resource.data.completedAt == (request.resource.data.completed ? request.time : null);
       allow create: if allowed() && restored(request.resource.data);
       // 작성자·작성 시각 및 나중에 추가한 필드는 그대로 보존합니다.
-      allow update: if allowed() && content(request.resource.data)
+      allow update: if allowed() && resource.data.get('deletedAt', null) == null
+        && request.resource.data.get('deletedAt', null) == null && content(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title', 'dueDate', 'startDate', 'allDay', 'startTime', 'endTime', 'scope', 'assigneeEmail', 'important', 'completed', 'completedAt', 'updatedAt', 'updatedBy', 'revision'])
         && request.resource.data.revision == resource.data.get('revision', 0) + 1
         && request.resource.data.completedAt == (request.resource.data.completed
           ? (resource.data.get('completed', false) && resource.data.get('completedAt', null) != null
               ? resource.data.completedAt : request.time) : null);
-      allow delete: if allowed();
+      // 휴지통에서는 원래 일정 내용·작성 기록을 바꿀 수 없습니다.
+      allow update: if allowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedAt', 'deletedBy', 'revision', 'updatedAt', 'updatedBy'])
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1
+        && request.resource.data.updatedAt == request.time && actor(request.resource.data.updatedBy)
+        && ((resource.data.get('deletedAt', null) == null && request.resource.data.deletedAt == request.time && actor(request.resource.data.deletedBy))
+          || (resource.data.get('deletedAt', null) is timestamp
+            && request.time < resource.data.deletedAt + duration.value(30, 'd')
+            && request.resource.data.deletedAt == null && request.resource.data.deletedBy == null));
+      allow delete: if allowed() && resource.data.get('deletedAt', null) is timestamp
+        && request.time >= resource.data.deletedAt + duration.value(30, 'd');
     }
     // 위에 명시하지 않은 위치(진단·하위 문서 포함)는 모두 차단합니다.
     match /{document=**} { allow read, write: if false; }

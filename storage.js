@@ -163,7 +163,7 @@
   function record(snapshot) {
     const raw = snapshot.data() || {};
     const value = { ...raw, id: snapshot.id };
-    for (const key of ["createdAt", "updatedAt", "completedAt", "restoredAt"]) {
+    for (const key of ["createdAt", "updatedAt", "completedAt", "restoredAt", "deletedAt"]) {
       value[key] = raw[key] && typeof raw[key].toDate === "function" ? raw[key].toDate().toISOString() : raw[key] || null;
     }
     return M.normalize(value);
@@ -242,19 +242,33 @@
     requireWritable(); const actor = currentUser(), F = sdk.firestore, ref = F.doc(db, "tasks", id);
     await F.runTransaction(db, async transaction => {
       requireWritable(actor.id); const snapshot = await transaction.get(ref), old = checkRevision(snapshot, expectedRevision); requireWritable(actor.id);
+      if (old.deletedAt) throw new Error("휴지통에 있는 일정입니다. 먼저 복원해주세요.");
       const clean = M.validate({ ...old, ...patch });
       transaction.update(ref, { ...clean, revision: old.revision + 1,
         updatedAt: F.serverTimestamp(), updatedBy: actor,
         completedAt: clean.completed ? snapshot.data().completedAt || F.serverTimestamp() : null });
     });
   }
-  async function remove(id, expectedRevision) {
+  // 서버 시각으로 휴지통 이동·복원·만료 삭제를 검증합니다.
+  async function trashAction(id, revision, action) {
     requireWritable(); const actor = currentUser(), F = sdk.firestore, ref = F.doc(db, "tasks", id);
-    await F.runTransaction(db, async transaction => {
-      requireWritable(actor.id); const snapshot = await transaction.get(ref); checkRevision(snapshot, expectedRevision); requireWritable(actor.id);
-      transaction.delete(ref); // v1에는 휴지통이 없습니다.
+    return F.runTransaction(db, async transaction => {
+      requireWritable(actor.id); const snap = await transaction.get(ref);
+      if (action === "purge" && !snap.exists()) return;
+      const old = checkRevision(snap, revision); requireWritable(actor.id);
+      if (action === "trash" && old.deletedAt) throw new Error("이미 휴지통에 있어요.");
+      if (action !== "trash" && !old.deletedAt) throw new Error("이미 복원된 일정이에요.");
+      if (action === "purge") {
+        if (Date.now() - Date.parse(old.deletedAt) < 30 * 86400000) return;
+        transaction.delete(ref); // 최종 30일 경계는 보안 규칙이 서버 시각으로 검사합니다.
+      } else transaction.update(ref, { deletedAt: action === "trash" ? F.serverTimestamp() : null,
+        deletedBy: action === "trash" ? actor : null, revision: old.revision + 1,
+        updatedAt: F.serverTimestamp(), updatedBy: actor });
     });
   }
+  const remove = (id, revision) => trashAction(id, revision, "trash");
+  const restoreTrash = (id, revision) => trashAction(id, revision, "restore");
+  const purgeTrash = (id, revision) => trashAction(id, revision, "purge");
   // 백업은 화면 캐시 대신 서버의 전체 목록을 읽습니다. 회원 목록·로그인 정보는 제외합니다.
   async function exportTasks() {
     requireWritable(); const owner = currentUser().id;
@@ -267,7 +281,7 @@
       requireWritable(owner, true); const existing = await transaction.get(ref); requireWritable(owner, true);
       if (existing.exists()) return false; // 미리보기 이후 다른 기기에서 추가해도 덮어쓰지 않습니다.
       const data = { ...input }; delete data.id;
-      for (const key of ["createdAt", "updatedAt", "completedAt"]) {
+      for (const key of ["createdAt", "updatedAt", "completedAt", "deletedAt"]) {
         data[key] = data[key] ? F.Timestamp.fromDate(new Date(data[key])) : null;
       }
       // 원본 기록은 보존하되, 이번 가져오기 실행자는 서버에서 검증할 수 있게 별도로 기록합니다.
@@ -275,7 +289,7 @@
       transaction.set(ref, data); return true;
     });
   }
-  D.storage = { getAppearance: () => ({ ...appearance }), exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
+  D.storage = { restoreTrash, purgeTrash, getAppearance: () => ({ ...appearance }), exportTasks, restoreOne, init, subscribe, add, update, remove, currentUser, canWrite, checkConnection, watchStatus,
     watchAuth, signIn, signOut, prepareAuth, canRead: () => Boolean(user && permitted && serverSeen), authBusy: () => authState.busy,
     getStatus: () => ({ ...status }), getPreferences: () => ({ ...preferences }), setPreferences };
 })();

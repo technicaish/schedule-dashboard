@@ -33,6 +33,7 @@
     if (value.revision !== undefined && (!Number.isSafeInteger(value.revision) || value.revision < 0)) throw new Error("변경 횟수가 올바르지 않습니다.");
     const result = { ...value, ...M.validate(value), id, schemaVersion: 1, revision: value.revision ?? 0,
       createdAt: time(value.createdAt, "작성"), updatedAt: time(value.updatedAt, "수정"), completedAt: time(value.completedAt, "완료"),
+      deletedAt: time(value.deletedAt, "휴지통 이동"), deletedBy: value.deletedAt ? person(value.deletedBy) : null,
       createdBy: person(value.createdBy), updatedBy: person(value.updatedBy) };
     if (!result.completed && result.completedAt) throw new Error("미완료 항목에 완료 시각이 있습니다.");
     return result;

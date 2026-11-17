@@ -55,7 +55,8 @@
     V.renderLists(items, today, writable(), !S.canRead());
     D.calendar.render($("calendars"), startMonth, items, today, selectedDay);
     if (selectedDay && $("day-dialog").open) V.renderDay(items, selectedDay, today, writable(), !S.canRead());
-    connection(); updateControls();
+    connection(); updateControls(); D.trash.render(S.canRead() ? items : [], writable());
+    if (editing && !items.some(task => task.id === editing.id && !task.deletedAt)) $("edit-dialog").close();
     D.taskOptions.choices("task"); D.taskOptions.choices("edit");
     // 완료 버튼을 눌러 목록이 이동해도 가능한 경우 초점을 유지합니다.
     if (focusId && !document.contains(focused)) {
@@ -85,7 +86,7 @@
     try {
       await action(); V.toast(success); return true;
     } catch (error) {
-      V.toast(error.code === "permission-denied" ? "저장 권한이 거절됐어요. Firebase에 v1.13 규칙을 게시했는지와 계정 허용 상태를 확인해주세요." : error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
+      V.toast(error.code === "permission-denied" ? "저장 권한이 거절됐어요. Firebase에 v1.14 규칙을 게시했는지와 계정 허용 상태를 확인해주세요." : error.name === "QuotaExceededError" ? "브라우저 저장 공간이 부족해 저장하지 못했어요." : error.message || "저장하지 못했어요. 다시 시도해주세요.");
       return false;
     } finally { busy = false; paint(); }
   }
@@ -127,7 +128,7 @@
     const button = event.target.closest("button[data-action]");
     if (!button) return;
     const task = items.find(item => item.id === button.dataset.id);
-    if (!task) return;
+    if (!task || task.deletedAt) return;
     if (button.dataset.action === "edit") openEdit(task);
     if (button.dataset.action === "toggle") await change(() => S.update(task.id, { completed: !task.completed }, task.revision), task.completed ? "미완료로 바꿨어요." : "하나를 함께 해냈어요!");
   });
@@ -140,8 +141,8 @@
     if (!editing) return;
     const target = { ...editing }, task = items.find(item => item.id === target.id);
     if (!task) return;
-    if (await confirmAction("이 할 일을 삭제할까요?", `‘${task.title}’\n삭제하면 되돌릴 수 없어요.`)) {
-      if (await change(() => S.remove(target.id, target.revision), "할 일을 삭제했어요.")) $("edit-dialog").close();
+    if (await confirmAction("휴지통으로 옮길까요?", `‘${task.title}’\n30일 동안 복원할 수 있어요. 이후 온라인 접속 중 자동 삭제됩니다.`, "휴지통으로")) {
+      if (await change(() => S.remove(target.id, target.revision), "휴지통으로 옮겼어요. 30일 동안 복원할 수 있어요.")) $("edit-dialog").close();
     }
   });
   $("edit-dialog").addEventListener("close", () => { editing = null; });

@@ -59,7 +59,9 @@ service cloud.firestore {
     }
     function oldTime(value) { return value == null || value is timestamp; }
     function restored(data) {
-      return options(data) &amp;&amp; dates(data) &amp;&amp; data.restoredAt == request.time &amp;&amp; actor(data.restoredBy)
+      return (data.get(&#x27;deletedAt&#x27;, null) == null ||
+        (data.deletedAt is timestamp &amp;&amp; data.deletedAt &lt;= request.time &amp;&amp; oldPerson(data.deletedBy)))
+        &amp;&amp; options(data) &amp;&amp; dates(data) &amp;&amp; data.restoredAt == request.time &amp;&amp; actor(data.restoredBy)
         &amp;&amp; data.title is string &amp;&amp; data.title.size() &gt; 0 &amp;&amp; data.title.size() &lt;= 120
         &amp;&amp; (data.dueDate == null || (data.dueDate is string
           &amp;&amp; data.dueDate.matches(&#x27;^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;)))
@@ -86,14 +88,25 @@ service cloud.firestore {
         &amp;&amp; request.resource.data.completedAt == (request.resource.data.completed ? request.time : null);
       allow create: if allowed() &amp;&amp; restored(request.resource.data);
       // 작성자·작성 시각 및 나중에 추가한 필드는 그대로 보존합니다.
-      allow update: if allowed() &amp;&amp; content(request.resource.data)
+      allow update: if allowed() &amp;&amp; resource.data.get(&#x27;deletedAt&#x27;, null) == null
+        &amp;&amp; request.resource.data.get(&#x27;deletedAt&#x27;, null) == null &amp;&amp; content(request.resource.data)
         &amp;&amp; request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           &#x27;title&#x27;, &#x27;dueDate&#x27;, &#x27;startDate&#x27;, &#x27;allDay&#x27;, &#x27;startTime&#x27;, &#x27;endTime&#x27;, &#x27;scope&#x27;, &#x27;assigneeEmail&#x27;, &#x27;important&#x27;, &#x27;completed&#x27;, &#x27;completedAt&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;, &#x27;revision&#x27;])
         &amp;&amp; request.resource.data.revision == resource.data.get(&#x27;revision&#x27;, 0) + 1
         &amp;&amp; request.resource.data.completedAt == (request.resource.data.completed
           ? (resource.data.get(&#x27;completed&#x27;, false) &amp;&amp; resource.data.get(&#x27;completedAt&#x27;, null) != null
               ? resource.data.completedAt : request.time) : null);
-      allow delete: if allowed();
+      // 휴지통에서는 원래 일정 내용·작성 기록을 바꿀 수 없습니다.
+      allow update: if allowed()
+        &amp;&amp; request.resource.data.diff(resource.data).affectedKeys().hasOnly([&#x27;deletedAt&#x27;, &#x27;deletedBy&#x27;, &#x27;revision&#x27;, &#x27;updatedAt&#x27;, &#x27;updatedBy&#x27;])
+        &amp;&amp; request.resource.data.revision == resource.data.get(&#x27;revision&#x27;, 0) + 1
+        &amp;&amp; request.resource.data.updatedAt == request.time &amp;&amp; actor(request.resource.data.updatedBy)
+        &amp;&amp; ((resource.data.get(&#x27;deletedAt&#x27;, null) == null &amp;&amp; request.resource.data.deletedAt == request.time &amp;&amp; actor(request.resource.data.deletedBy))
+          || (resource.data.get(&#x27;deletedAt&#x27;, null) is timestamp
+            &amp;&amp; request.time &lt; resource.data.deletedAt + duration.value(30, &#x27;d&#x27;)
+            &amp;&amp; request.resource.data.deletedAt == null &amp;&amp; request.resource.data.deletedBy == null));
+      allow delete: if allowed() &amp;&amp; resource.data.get(&#x27;deletedAt&#x27;, null) is timestamp
+        &amp;&amp; request.time &gt;= resource.data.deletedAt + duration.value(30, &#x27;d&#x27;);
     }
     // 위에 명시하지 않은 위치(진단·하위 문서 포함)는 모두 차단합니다.
     match /{document=**} { allow read, write: if false; }
